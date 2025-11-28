@@ -16,11 +16,31 @@ async function main() {
     },
   })
   const normalUserRole = await prisma.role.upsert({
-    where: { name: 'NORMAL_USER' },
+    where: { name: 'NORMAL_ADMIN' },
     update: {},
     create: {
-      name: 'NORMAL_USER',
-      desc: '普通用户',
+      name: 'NORMAL_ADMIN',
+      desc: '普通管理员',
+      isSystem: true,
+      disabled: false,
+    },
+  })
+  const departmentLeaderRole = await prisma.role.upsert({
+    where: { name: 'DEPARTMENT_LEADER' },
+    update: {},
+    create: {
+      name: 'DEPARTMENT_LEADER',
+      desc: '部门负责人',
+      isSystem: true,
+      disabled: false,
+    },
+  })
+  const departmentMemberRole = await prisma.role.upsert({
+    where: { name: 'DEPARTMENT_MEMBER' },
+    update: {},
+    create: {
+      name: 'DEPARTMENT_MEMBER',
+      desc: '子部门成员',
       isSystem: true,
       disabled: false,
     },
@@ -41,28 +61,10 @@ async function main() {
     },
   })
 
-  // 创建普通用户账号
-  const userPassword = await bcrypt.hash('user123', 10)
-  const normalUser = await prisma.user.upsert({
-    where: { username: 'user' },
-    update: {},
-    create: {
-      username: 'user',
-      password: userPassword,
-      disabled: false,
-      roles: {
-        connect: { id: normalUserRole.id },
-      },
-    },
-  })
-
   console.log('✅ 测试数据填充完成')
   console.log('📝 系统角色:')
   console.log(`   - ${superAdminRole.name} (${superAdminRole.desc})`)
   console.log(`   - ${normalUserRole.name} (${normalUserRole.desc})`)
-  console.log('👤 用户账号:')
-  console.log(`   - ${adminUser.username} (密码: admin123)`)
-  console.log(`   - ${normalUser.username} (密码: user123)`)
 }
 
 main()

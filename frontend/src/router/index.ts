@@ -1,6 +1,5 @@
 import { lazy } from 'react';
-import { DashboardIcon, SettingIcon, ViewModuleIcon } from 'tdesign-icons-react';
-import { BaseRole } from 'types/enum';
+import { DashboardIcon, SettingIcon } from 'tdesign-icons-react';
 import IRouter from './interface/route';
 import otherRoutes from './modules/others';
 
@@ -60,32 +59,6 @@ const routes: IRouter[] = [
   },
 ];
 
-const devRoutes: IRouter[] = [
-  {
-    path: '/example',
-    meta: { title: '示例集合', Icon: ViewModuleIcon },
-    children: [
-      {
-        path: '/permission',
-        meta: { title: '页面权限' },
-        children: [
-          {
-            path: '/permission/admin',
-            Component: lazy(() => import('pages/Example/Permission/admin')),
-            meta: { title: '管理员权限', allowRole: [BaseRole.SUPER_ADMIN] },
-          },
-          {
-            path: '/permission/user',
-            Component: lazy(() => import('pages/Example/Permission/user')),
-            meta: { title: '普通用户权限', allowRole: [BaseRole.NORMAL_USER] },
-          },
-        ],
-      },
-    ],
-  },
-];
-
-const isDevelopment = import.meta.env.MODE === 'development';
-const allRoutes = [...routes, ...otherRoutes, ...(isDevelopment ? devRoutes : [])];
+const allRoutes = [...routes, ...otherRoutes];
 export default allRoutes;
 export type { IRouteMeta, default as IRouter, RouteMeta } from './interface/route';

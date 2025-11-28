@@ -82,7 +82,7 @@ const renderRoutes: TRenderRoutes = (routes, parentPath = '', breadcrumb = [], m
   });
 
 const AppRouter = () => (
-  <Content>
+  <Content className={Style.routerContent}>
     <Suspense
       fallback={
         <div className={Style.loading}>

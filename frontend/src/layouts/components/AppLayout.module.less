@@ -5,25 +5,39 @@
 }
 
 .sideContainer {
+  display: flex;
+  flex-direction: column;
   flex: 1;
   min-width: 760px;
-  overflow: auto;
+  min-height: 0; /* 关键：允许 flex 子元素收缩 */
+  overflow: hidden;
 }
 
 .topPanel {
+  display: flex;
+  flex-direction: column;
   min-width: 1150px;
+  height: 100%;
 }
 
 .mixPanel {
+  display: flex;
+  flex-direction: column;
   height: 100%;
 }
 
 .mixMain {
+  display: flex;
   flex-direction: row!important;
   flex: 1;
-  overflow: auto;
+  min-height: 0;
+  overflow: hidden;
 }
 
 .mixContent {
-  overflow: auto;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
 }

@@ -1,9 +1,20 @@
 .panel {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
   margin: 24px;
   padding: 0;
-  overflow: auto;
+  overflow: hidden;
+  min-height: 0; /* 关键：允许 flex 子元素收缩 */
 }
 
 .breadcrumb {
+  flex-shrink: 0;
   margin-bottom: 8px;
+}
+
+.content {
+  flex: 1;
+  min-height: 0; /* 关键：允许 flex 子元素收缩 */
+  overflow: hidden;
 }

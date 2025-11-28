@@ -31,7 +31,7 @@ const Page = ({
           ))}
         </Breadcrumb>
       )}
-      {children}
+      <div className={Style.content}>{children}</div>
     </Content>
   );
 };

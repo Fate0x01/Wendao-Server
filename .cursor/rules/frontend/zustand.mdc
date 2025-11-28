@@ -1,0 +1,107 @@
+---
+globs: ./frontend/src/stores/*.ts
+alwaysApply: false
+---
+
+# Zustand Store 开发规范
+
+描述: 指导创建和维护带有持久化功能的 Zustand Stores，强制执行特定的持久化过滤策略。
+
+## 1. 核心原则 (Core Principles)
+
+- 语法标准: 使用函数式 create<T>() 语法。
+- 状态与动作分离 (State & Action Separation):
+  - 必须将所有修改状态的方法（Functions）归组到一个名为 actions 的对象中。
+  - 严禁将方法直接放在状态对象的根层级。
+  - 理由: 这种结构配合我们的 partialize 策略，可以实现全自动的“只存数据，不存方法”。
+- 不可变性: 使用标准的 set 函数进行更新。
+
+## 2. 持久化策略 (Persistence Strategy)
+
+- 在使用 persist 中间件时，严格遵循 “黑名单模式 (Blacklist Pattern)”：
+- 存储引擎: 使用 createJSONStorage(() => localStorage) (除非另有说明)。
+- 过滤规则 (Partialize):
+  - 必须使用 partialize 配置项。
+  - 必须使用 Object.fromEntries + filter 的组合模式。
+  - 逻辑: 自动排除 actions 键以及任何特定的临时状态（如 isLoading, error）。
+  - 禁止使用白名单映射（即手动枚举 { key: state.key }），除非有极其特殊的重命名需求。
+
+## 3. 代码模板 (Code Structure)
+
+AI 生成 Store 代码时，必须严格参照以下结构：
+
+```ts
+import { create } from "zustand";
+import { persist, createJSONStorage } from "zustand/middleware";
+
+// 1. 定义接口
+interface MyStoreState {
+  // --- 状态数据 (State) ---
+  userInfo: Record<string, any>;
+  token: string | null;
+
+  // --- 动作方法 (Actions) ---
+  // 所有修改状态的方法必须放在这里
+  actions: {
+    setUserInfo: (info: Record<string, any>) => void;
+    setToken: (token: string) => void;
+    reset: () => void;
+  };
+}
+
+// 2. 创建 Store
+export const useMyStore = create<MyStoreState>()(
+  persist(
+    (set) => ({
+      // 初始化数据
+      userInfo: {},
+      token: null,
+
+      // 实现 Actions
+      actions: {
+        setUserInfo: (userInfo) => set({ userInfo }),
+        setToken: (token) => set({ token }),
+        reset: () => set({ userInfo: {}, token: null }),
+      },
+    }),
+    {
+      name: "my-storage-key", // 必须是唯一的存储键名
+      storage: createJSONStorage(() => localStorage),
+
+      // 3. 黑名单过滤策略 (CRITICAL)
+      // 自动排除 actions，以及其他不需要持久化的临时字段
+      partialize: (state) =>
+        Object.fromEntries(
+          Object.entries(state).filter(
+            ([key]) => !["actions", "isLoading"].includes(key)
+          )
+        ),
+    }
+  )
+);
+
+// 4. 导出 Actions Hook
+export const useMyStoreActions = () => useMyStore((state) => state.actions);
+
+// 5. 导出可读信息Hook
+export const useUserInfo = () => useMyStore((state) => state.userInfo);
+```
+
+## 5. 反模式 (Anti-Patterns - 禁止这样做)
+
+- 禁止根层级混合方法:
+
+```ts
+// 错误示范：这就很难自动过滤函数
+{
+  data: '...',
+  setData: () => ...
+}
+```
+
+- 禁止手动白名单映射:
+
+```ts
+// 错误示范：每次加新状态都要手动改这里，容易遗漏
+partialize: (state) => ({ data: state.data });
+```

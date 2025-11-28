@@ -1,0 +1,39 @@
+/// 角色模型
+model Role {
+    id          String       @id() @default(cuid())
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt()
+    /// 角色名称
+    name        String       @unique()
+    /// 角色描述
+    desc        String?
+    /// 系统角色
+    isSystem    Boolean      @default(false)
+    /// 禁止
+    disabled    Boolean      @default(false)
+    /// 用户组
+    users       User[]
+    /// 权限组
+    permissions Permission[]
+
+    @@map("system_roles")
+}
+
+/// 权限模型
+model Permission {
+    id        String   @id() @default(cuid())
+    createdAt DateTime @default(now())
+    updatedAt DateTime @updatedAt()
+    /// 权限分组
+    group     String
+    /// 权限名称
+    name      String
+    /// 数据模型
+    model     String?
+    /// 权限代码
+    code      String   @unique()
+    /// 角色分组
+    roles     Role[]
+
+    @@map("system_permissions")
+}

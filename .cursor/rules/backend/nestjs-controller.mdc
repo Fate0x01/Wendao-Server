@@ -1,0 +1,279 @@
+---
+description: nestJS Controller Development Rules
+alwaysApply: false
+---
+
+## 1. 核心设计原则
+
+- 请求统一：除仅传单 ID 的简单场景外，统一使用 POST + @Body 传参，避免 GET Query 在布尔/空值处理上的歧义；无入参的纯读取（如权限枚举）可使用 GET。
+- 单 ID 语义化：仅当入参只包含唯一 id 时，保持语义化协议（如 GET/DELETE :id），同时 id 推荐使用专门的 DTO 标注校验。
+- Prisma 优先：默认直接使用 PrismaService 进行常规 CRUD；需要 findAndCount、扩展功能时优先使用 @NestPrisma() 注入的扩展客户端。
+- 权限与上下文：始终注入 ClsService 获取当前用户上下文，配合 CASL 能力 (accessibleBy + defineAbilityFor) 做资源访问控制。
+- 模块化设计：始终在 Module 上下文中工作，优先检查同级 dto 和 entities 目录。
+- 响应标准化：严格遵循 ResultData 的静态方法和 ApiResult 的装饰器参数对应关系。
+- 类型安全优先：在 Prisma 查询中，必须将 where 条件直接写在方法参数对象内，禁止在外部定义 const where 变量，以确保获得最准确的类型提示（可用三元或 undefined 处理可选条件）。
+
+## 2. 依赖注入规范 (Imports & Injection)
+
+Controller 必须遵循以下路径引用和注入方式：
+
+```ts
+import { Body, Controller, Delete, Get, Param, Post } from "@nestjs/common";
+import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ClsService } from "nestjs-cls";
+import { PrismaService } from "nestjs-prisma";
+import { Permission } from "src/common/decorators/permission.decorator";
+import {
+  ApiResult,
+  ResultData,
+} from "src/common/decorators/response.decorator";
+import {
+  NestPrisma,
+  NestPrismaServiceType,
+} from "src/shared/prisma/prisma.extension.decorator";
+// 若需要 CASL 访问控制
+// import { accessibleBy } from '@casl/prisma'
+// import defineAbilityFor from 'src/shared/casl/casl-ability.factory'
+```
+
+Constructor 注入:
+
+```ts
+constructor(
+  private readonly cls: ClsService,
+  private readonly prisma: PrismaService,
+  @NestPrisma() private readonly nestPrisma: NestPrismaServiceType,
+  // 仅在需要复杂逻辑时注入业务 Service
+) {}
+```
+
+## 3. 响应与文档对应策略 (核心规则)
+
+根据返回数据的类型，严格选择对应的 ResultData 方法和 @ApiResult 参数：
+场景 返回语句 装饰器配置 说明
+单对象 return ResultData.ok(user) @ApiResult(UserEntity) 返回单个实体
+纯数组 return ResultData.ok(users) @ApiResult(UserEntity, true, false) 仅返回数组，无 total
+分页列表 return ResultData.list(list, total) @ApiResult(UserEntity, true, true) 返回 { list: [], total: N }
+
+## 4. DTO 编写规范
+
+所有 DTO 类必须严格遵循以下规则：
+
+1. 双重装饰：每个属性必须同时包含：
+
+- 验证装饰器 (class-validator)：确保运行时数据的准确性。
+- 文档装饰器 (@nestjs/swagger)：确保 API 文档的完整性。
+
+2. 必填与可选：
+
+- 必填项：使用 @ApiProperty() 和 @IsString(), @IsInt() 等。
+- 可选项：必须同时使用 @ApiPropertyOptional() 和 @IsOptional()。
+
+3. ApiProperty 类型声明：
+
+- 所有 @ApiProperty/@ApiPropertyOptional 必须显式传入 type，且类型与字段声明保持一致，禁止省略或依赖自动推断。
+
+4. 分页 DTO 强制要求：
+
+- 分页查询 DTO 必须包含 current (当前页) 和 pageSize (每页条数) 字段。
+- 可直接复用以下代码
+
+```ts
+  @ApiProperty({ description: '当前页', default: 1, type: Number })
+  @Type(() => Number)
+  @IsNumber({}, { message: 'current 必须为数字' })
+  @Min(1, { message: 'current 最小为 1' })
+  current = 1
+
+  @ApiProperty({ description: '每页数量', default: 10, type: Number })
+  @Type(() => Number)
+  @IsNumber({}, { message: 'pageSize 必须为数字' })
+  @Min(1, { message: 'pageSize 最小为 1' })
+  pageSize = 10
+```
+
+## 5. 标准代码范例
+
+请严格模仿以下代码，特别是分页处理 (findAndCount) 和响应包装部分。示例中的括号说明仅用于规则讲解，真实代码里的 @ApiOperation.summary 等描述必须保持业务名称，不要包含规则或说明性文字：
+
+```ts
+import { accessibleBy } from "@casl/prisma";
+import { Body, Controller, Delete, Get, Param, Post } from "@nestjs/common";
+import { ApiOperation, ApiTags } from "@nestjs/swagger";
+import { ClsService } from "nestjs-cls";
+import { PrismaService } from "nestjs-prisma";
+import { Permission } from "src/common/decorators/permission.decorator";
+import {
+  ApiResult,
+  ResultData,
+} from "src/common/decorators/response.decorator";
+import defineAbilityFor from "src/shared/casl/casl-ability.factory";
+import { Actions } from "src/shared/casl/casl-interface";
+import {
+  NestPrisma,
+  NestPrismaServiceType,
+} from "src/shared/prisma/prisma.extension.decorator";
+import { CreateUserDto } from "./dto/create-user.dto";
+import { UpdateUserDto } from "./dto/update-user.dto";
+import { UserIdDto } from "./dto/user-id.dto";
+import { UserQueryDto } from "./dto/user-query.dto"; // 包含 current, pageSize, keywords
+import { UserEntity } from "./entities/user.entity";
+
+@ApiTags("系统用户")
+@Controller("sys-user")
+export class SysUserController {
+  constructor(
+    private readonly cls: ClsService,
+    private readonly prisma: PrismaService,
+    @NestPrisma() private readonly nestPrisma: NestPrismaServiceType
+  ) {}
+
+  @Post("list")
+  @ApiOperation({ summary: "用户分页列表（POST + Body）" })
+  // isArray=true, isPager=true -> 对应 ResultData.list
+  @ApiResult(UserEntity, true, true)
+  @Permission({
+    group: "用户管理",
+    name: "用户列表",
+    model: "User",
+    code: "user:list",
+  })
+  async getUsers(@Body() query: UserQueryDto) {
+    const { rows, total } = await this.nestPrisma.client.user.findAndCount({
+      where: {
+        username: query.keywords ? { contains: query.keywords } : undefined,
+        disabled: query.disabled,
+      },
+      select: {
+        id: true,
+        username: true,
+        disabled: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+      skip: (query.current - 1) * query.pageSize,
+      take: query.pageSize,
+      orderBy: { createdAt: "desc" },
+    });
+    return ResultData.list(rows, total);
+  }
+
+  @Post("create")
+  @ApiOperation({ summary: "创建用户（POST + Body）" })
+  // isArray=false, isPager=false -> 对应 ResultData.ok
+  @ApiResult(UserEntity)
+  @Permission({
+    group: "用户管理",
+    name: "创建用户",
+    model: "User",
+    code: "user:create",
+  })
+  async createUser(@Body() dto: CreateUserDto) {
+    const user = await this.prisma.user.create({
+      data: dto,
+      select: {
+        id: true,
+        username: true,
+        disabled: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return ResultData.ok(user);
+  }
+
+  @Get(":id")
+  @ApiOperation({ summary: "用户详情（单 ID 语义化 GET）" })
+  @ApiResult(UserEntity)
+  @Permission({
+    group: "用户管理",
+    name: "用户详情",
+    model: "User",
+    code: "user:info",
+  })
+  async getUser(@Param("id") id: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id },
+      select: {
+        id: true,
+        username: true,
+        disabled: true,
+        createdAt: true,
+        updatedAt: true,
+      },
+    });
+    return ResultData.ok(user);
+  }
+
+  @Post("update")
+  @ApiOperation({ summary: "更新用户（POST + Body）" })
+  @ApiResult(UserEntity)
+  @Permission({
+    group: "用户管理",
+    name: "更新用户",
+    model: "User",
+    code: "user:update",
+  })
+  async updateUser(@Body() dto: UpdateUserDto & UserIdDto) {
+    const ability = defineAbilityFor(this.cls.get("user"));
+    const record = await this.prisma.user.findFirst({
+      where: { id: dto.id, AND: [accessibleBy(ability).User] },
+      select: { id: true },
+    });
+    if (!record) throw new Error("用户不存在或无权限操作");
+    const user = await this.prisma.user.update({
+      where: { id: dto.id },
+      data: {
+        username: dto.username,
+        disabled: dto.disabled,
+        ...(dto.password ? { password: dto.password } : {}),
+      },
+    });
+    return ResultData.ok(user);
+  }
+
+  @Delete(":id")
+  @ApiOperation({ summary: "删除用户（单 ID 语义化 DELETE）" })
+  @ApiResult(UserEntity)
+  @Permission({
+    group: "用户管理",
+    name: "删除用户",
+    model: "User",
+    code: "user:delete",
+  })
+  async deleteUser(@Param("id") id: string) {
+    const ability = defineAbilityFor(this.cls.get("user"));
+    const record = await this.prisma.user.findFirst({
+      where: { id, AND: [accessibleBy(ability).User] },
+      select: { id: true },
+    });
+    if (!record || !ability.can(Actions.Delete, "User", id))
+      throw new Error("无权限删除用户");
+    const user = await this.prisma.user.delete({ where: { id } });
+    return ResultData.ok(user);
+  }
+}
+```
+
+## 6.开发工作流 (思维链)
+
+在生成代码前，请按以下步骤思考：
+
+1. 分析需求：是查单个？查所有？还是查分页？
+2. 检查资源：
+
+- ./dto 中是否有对应的 Input DTO？如果是分页，必须包含 current 和 pageSize。(需包含 Validator 和 Swagger)
+- ./entities 中是否有对应的 Output Entity？(不存在则先生成)
+
+3. 编写逻辑：
+
+- 请求方式：除仅单 id 的 GET/DELETE 语义化场景外，查询/分页/更新等全部使用 POST + @Body。
+- 关键规则: where 对象必须写在函数调用内部，严禁额外定义变量。
+- 分页场景：使用 nestPrisma.client.model.findAndCount({...}) -> ResultData.list(rows, total)。
+- 常规场景：使用 prisma.model.action 或 nestPrisma.client.model.action -> ResultData.ok(data)。
+- 权限校验：需要基于 CASL 时，先通过 defineAbilityFor(this.cls.get('user')) 获取 ability，再用 accessibleBy(ability).Model 过滤或 ability.can 进行细粒度判断。
+
+4. 配置装饰器：
+
+- 根据第 3 步的返回类型，正确配置 @ApiResult 的 isArray 和 isPager 参数。
+- 配置 @Permission 的 group, name, model, code。

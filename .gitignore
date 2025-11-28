@@ -1,0 +1,67 @@
+# ==============================================
+# 全局通用 (Global / Node.js)
+# ==============================================
+
+# 依赖包 (会忽略根目录及所有子目录下的 node_modules)
+node_modules/
+
+# 环境变量 (安全核心：切勿提交!)
+# .env
+# .env.production
+# .env.development
+# .env.local
+# .env.*.local
+
+# 但允许提交示例文件 (方便在新环境重新配置)
+!.env.example
+!.env.template
+
+# npm / yarn / pnpm 错误日志
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ==============================================
+# 后端 (NestJS Specific)
+# ==============================================
+
+# NestJS 构建输出目录
+dist/
+
+# 编译缓存 (如果使用了 webpack 热更新等)
+*.hot-update.*
+
+# ==============================================
+# 前端 (Refine / Vite / Next.js / React)
+# ==============================================
+
+.next/
+out/
+build/
+.analyze/
+coverage/
+.eslintcache
+*.tsbuildinfo
+
+# ==============================================
+# 操作系统 & 编辑器 (OS & IDE)
+# ==============================================
+# macOS
+.DS_Store
+# Windows
+Thumbs.db
+
+# IDE 配置 (VS Code / JetBrains)
+# 个人建议忽略 IDE 配置，除非团队强制统一插件
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# ==============================================
+# 其他临时文件
+# ==============================================
+temp/
+tmp/
+*.log

@@ -1,0 +1,145 @@
+# CrudKit 组件使用规则
+
+## 概述
+
+CrudKit 是项目的 CRUD 页面组件工具库，位于 `frontend/src/components/CrudKit`。开发 CRUD 类型页面时应优先使用该工具库。
+
+## 使用场景选择
+
+| 场景 | 推荐方式 |
+|------|---------|
+| 标准 CRUD 页面（增删改查） | `CrudPage` 配置化组件 |
+| 仅查询 + 导出 | `useCrudTable` + `CrudSearchForm` + `CrudToolbar` |
+| 复杂操作列 | `useCrudTable` + `OperationColumn` |
+| 自定义弹窗表单 | `useCrudModal` + 业务自定义 Modal |
+
+## CrudPage 配置化使用（推荐）
+
+标准 CRUD 页面直接使用 `CrudPage`，示例：
+
+```typescript
+import { CrudPage, type SearchFieldConfig } from 'components/CrudKit';
+import type { CreateXxxDto, UpdateXxxBodyDto, XxxEntity, XxxQueryDto } from 'services/generated/model';
+
+// 1. 定义搜索字段
+const searchFields: SearchFieldConfig[] = [
+  { name: 'keywords', label: '名称', type: 'input' },
+  {
+    name: 'disabled',
+    label: '状态',
+    type: 'select',
+    options: [
+      { label: '全部', value: '' },
+      { label: '正常', value: 'false' },
+      { label: '禁用', value: 'true' },
+    ],
+    transform: (value) => {
+      if (value === 'true') return { disabled: true };
+      if (value === 'false') return { disabled: false };
+      return {};
+    },
+  },
+];
+
+// 2. 定义表格列
+const columns: PrimaryTableCol<XxxEntity>[] = [
+  { title: '名称', colKey: 'name', width: 150 },
+  { title: '状态', colKey: 'disabled', width: 100, cell: ({ row }) => <Tag>{row.disabled ? '禁用' : '正常'}</Tag> },
+];
+
+// 3. 定义表单字段组件（如需动态数据）
+const FormFields: React.FC<{ isEdit: boolean }> = ({ isEdit }) => (
+  <>
+    <FormItem name="name" label="名称" rules={[{ required: true }]}>
+      <Input />
+    </FormItem>
+  </>
+);
+
+// 4. 使用 CrudPage
+<CrudPage<XxxEntity, XxxQueryDto, CreateXxxDto, UpdateXxxBodyDto>
+  api={{
+    list: api.xxxControllerGetList,
+    create: api.xxxControllerCreate,
+    update: api.xxxControllerUpdate,
+    delete: api.xxxControllerDelete,
+  }}
+  searchFields={searchFields}
+  columns={columns}
+  formConfig={{
+    title: { add: '新增', edit: '编辑' },
+    width: 500,
+    renderForm: (isEdit) => <FormFields isEdit={isEdit} />,
+    fillForm: (editData) => ({ name: editData.name }),
+    transformValues: (values, isEdit, editData) => ({
+      ...(isEdit && editData ? { id: editData.id } : {}),
+      ...values,
+    }),
+  }}
+  toolbar={{ primaryLabel: '新增' }}
+  operations={[
+    { key: 'edit', label: '编辑' },
+    { key: 'delete', label: '删除', danger: true, confirm: '确定删除？' },
+  ]}
+/>
+```
+
+## 搜索字段配置
+
+```typescript
+interface SearchFieldConfig {
+  name: string;           // 字段名
+  label: string;          // 标签
+  type: 'input' | 'select' | 'date' | 'dateRange';
+  placeholder?: string;   // 占位符
+  options?: Array<{ label: string; value: string | number | boolean }>;  // 静态选项
+  request?: () => Promise<Array<{ label: string; value: unknown }>>;      // 异步选项
+  span?: number;          // 栅格宽度（默认 3）
+  transform?: (value: unknown) => unknown;  // 值转换
+}
+```
+
+## 操作列配置
+
+```typescript
+interface ActionConfig<TData> {
+  key: string;            // 按钮标识
+  label: string;          // 按钮文案
+  danger?: boolean;       // 是否危险按钮
+  confirm?: string;       // 确认提示（有值则显示确认弹窗）
+  onClick?: (record: TData) => void;
+  disabled?: boolean | ((record: TData) => boolean);
+  hidden?: boolean | ((record: TData) => boolean);
+}
+```
+
+## Hooks 单独使用
+
+需要更灵活控制时，可单独使用 Hooks：
+
+```typescript
+import { useCrudTable, useCrudModal, useTableSelection } from 'components/CrudKit';
+
+// 表格状态
+const { list, loading, handleSearch, handleReset, handlePageChange, refresh } = useCrudTable({
+  fetchApi: api.xxxControllerGetList,
+});
+
+// 弹窗状态
+const { visible, editData, isEdit, formRef, openAdd, openEdit, close, handleSubmit } = useCrudModal({
+  createApi: api.xxxControllerCreate,
+  updateApi: api.xxxControllerUpdate,
+  onSuccess: refresh,
+});
+
+// 多选状态
+const { selectedRowKeys, handleSelectionChange, clearSelection } = useTableSelection();
+```
+
+## 注意事项
+
+1. **泛型参数**：`CrudPage` 需要指定 4 个泛型 `<TData, TFilters, TCreateDto, TUpdateDto>`
+2. **API 类型兼容**：API 类型由 orval 生成，CrudKit 已做兼容处理
+3. **表单填充**：通过 `formConfig.fillForm` 控制编辑时的数据填充
+4. **值转换**：通过 `formConfig.transformValues` 控制提交前的数据转换
+5. **操作列**：内置 `edit` 和 `delete` 两个 key，会自动绑定对应行为

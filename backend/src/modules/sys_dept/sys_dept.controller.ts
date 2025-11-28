@@ -114,6 +114,117 @@ export class SysDeptController {
     return ResultData.ok(dept)
   }
 
+  @Post('list')
+  @ApiOperation({ summary: '部门列表' })
+  @ApiResult(DeptEntity, true, true)
+  @Permission({ group: '部门管理', name: '部门列表', model: 'Department', code: 'dept:list' })
+  async getDeptList(@Body() query: DeptQueryDto) {
+    const currentUser: ReqUser = this.cls.get('user')
+    const ability = defineAbilityFor(currentUser)
+
+    const { rows, total } = await this.nestPrisma.client.department.findAndCount({
+      where: {
+        AND: [
+          {
+            name: query.keywords ? { contains: query.keywords } : undefined,
+            disabled: query.disabled,
+            parentId: query.parentId,
+          },
+          accessibleBy(ability).Department,
+        ],
+      },
+      include: {
+        parent: { select: { id: true, name: true } },
+        leaders: { select: { id: true, username: true } },
+        _count: { select: { members: true, children: true } },
+      },
+      skip: (query.current - 1) * query.pageSize,
+      take: query.pageSize,
+      orderBy: { createdAt: 'desc' },
+    })
+    return ResultData.list(rows, total)
+  }
+
+  @Get('tree')
+  @ApiOperation({ summary: '部门树' })
+  @ApiResult(DeptTreeEntity, true, false)
+  @Permission({ group: '部门管理', name: '部门树', model: 'Department', code: 'dept:tree' })
+  async getDeptTree() {
+    const currentUser: ReqUser = this.cls.get('user')
+    const isAdmin = this.isSuperAdmin(currentUser)
+
+    // 超管：返回所有一级部门及其子部门
+    if (isAdmin) {
+      const depts = await this.prisma.department.findMany({
+        where: { parentId: null },
+        include: {
+          children: {
+            include: {
+              leaders: { select: { id: true, username: true } },
+              _count: { select: { members: true } },
+            },
+          },
+          leaders: { select: { id: true, username: true } },
+          _count: { select: { members: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+      return ResultData.ok(depts)
+    }
+
+    // 非超管：根据负责的部门和所属部门构建树
+    const leadingDeptIds = currentUser.leadingDepartments?.map((d) => d.id) ?? []
+    const memberDeptIds = currentUser.departments?.map((d) => d.id) ?? []
+    const allDeptIds = [...new Set([...leadingDeptIds, ...memberDeptIds])]
+
+    if (allDeptIds.length === 0) {
+      return ResultData.ok([])
+    }
+
+    // 查询用户关联的所有部门（包含父部门信息）
+    const userDepts = await this.prisma.department.findMany({
+      where: { id: { in: allDeptIds } },
+      select: { id: true, parentId: true },
+    })
+
+    // 收集需要展示的一级部门ID
+    const level1DeptIds = new Set<string>()
+    // 收集用户可管理/查看的二级部门ID
+    const accessibleLevel2DeptIds = new Set<string>()
+
+    for (const dept of userDepts) {
+      if (!dept.parentId) {
+        // 这是一级部门
+        level1DeptIds.add(dept.id)
+      } else {
+        // 这是二级部门，记录其父部门和自身
+        level1DeptIds.add(dept.parentId)
+        accessibleLevel2DeptIds.add(dept.id)
+      }
+    }
+
+    // 查询一级部门及其子部门
+    const depts = await this.prisma.department.findMany({
+      where: { id: { in: Array.from(level1DeptIds) } },
+      include: {
+        children: {
+          where: leadingDeptIds.some((id) => level1DeptIds.has(id))
+            ? undefined // 如果是一级部门负责人，可以看到所有子部门
+            : { id: { in: Array.from(accessibleLevel2DeptIds) } }, // 否则只能看到自己关联的二级部门
+          include: {
+            leaders: { select: { id: true, username: true } },
+            _count: { select: { members: true } },
+          },
+        },
+        leaders: { select: { id: true, username: true } },
+        _count: { select: { members: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    })
+
+    return ResultData.ok(depts)
+  }
+
   @Get(':id')
   @ApiOperation({ summary: '部门详情' })
   @ApiResult(DeptDetailEntity)
@@ -160,66 +271,6 @@ export class SysDeptController {
 
     const dept = await this.prisma.department.delete({ where: { id } })
     return ResultData.ok(dept)
-  }
-
-  @Post('list')
-  @ApiOperation({ summary: '部门列表' })
-  @ApiResult(DeptEntity, true, true)
-  @Permission({ group: '部门管理', name: '部门列表', model: 'Department', code: 'dept:list' })
-  async getDeptList(@Body() query: DeptQueryDto) {
-    const currentUser: ReqUser = this.cls.get('user')
-    const ability = defineAbilityFor(currentUser)
-
-    const { rows, total } = await this.nestPrisma.client.department.findAndCount({
-      where: {
-        AND: [
-          {
-            name: query.keywords ? { contains: query.keywords } : undefined,
-            disabled: query.disabled,
-            parentId: query.parentId,
-          },
-          accessibleBy(ability).Department,
-        ],
-      },
-      include: {
-        parent: { select: { id: true, name: true } },
-        leaders: { select: { id: true, username: true } },
-        _count: { select: { members: true, children: true } },
-      },
-      skip: (query.current - 1) * query.pageSize,
-      take: query.pageSize,
-      orderBy: { createdAt: 'desc' },
-    })
-    return ResultData.list(rows, total)
-  }
-
-  @Get('tree')
-  @ApiOperation({ summary: '部门树' })
-  @ApiResult(DeptTreeEntity, true, false)
-  @Permission({ group: '部门管理', name: '部门树', model: 'Department', code: 'dept:tree' })
-  async getDeptTree() {
-    const currentUser: ReqUser = this.cls.get('user')
-    const ability = defineAbilityFor(currentUser)
-
-    // 查询所有一级部门及其子部门
-    const depts = await this.prisma.department.findMany({
-      where: {
-        parentId: null,
-        AND: [accessibleBy(ability).Department],
-      },
-      include: {
-        children: {
-          include: {
-            leaders: { select: { id: true, username: true } },
-            _count: { select: { members: true } },
-          },
-        },
-        leaders: { select: { id: true, username: true } },
-        _count: { select: { members: true } },
-      },
-      orderBy: { createdAt: 'asc' },
-    })
-    return ResultData.ok(depts)
   }
 
   // ===================== 成员管理接口 =====================

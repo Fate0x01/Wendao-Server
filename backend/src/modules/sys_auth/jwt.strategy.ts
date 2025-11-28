@@ -48,6 +48,8 @@ export class JwtStrategy extends PassportStrategy(Strategy, 'jwt') {
         roles: {
           include: { permissions: true },
         },
+        departments: true,
+        leadingDepartments: true,
       },
     })
     // 写入 Redis 缓存

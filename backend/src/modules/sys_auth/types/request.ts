@@ -9,6 +9,8 @@ export type ReqUser = Prisma.UserGetPayload<{
         permissions: true
       }
     }
+    departments: true
+    leadingDepartments: true
   }
 }>
 

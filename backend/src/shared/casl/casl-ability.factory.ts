@@ -25,6 +25,9 @@ export default function defineAbilityFor(user: ReqUser) {
       case 'User':
         handleUserAbility(abilityBuilder, user)
         break
+      case 'Department':
+        handleDepartmentAbility(abilityBuilder, user)
+        break
       default:
         break
     }
@@ -40,4 +43,27 @@ export default function defineAbilityFor(user: ReqUser) {
 function handleUserAbility(builder: AbilityBuilder<AppAbility>, user: ReqUser) {
   builder.can(Actions.Manage, 'User', { createdById: user.id }) // 允许管理自己创建的账号
   builder.can([Actions.Read, Actions.Update], 'User', { id: user.id }) // 允许查看和更新自己的账号
+}
+
+/**
+ * 处理部门权限
+ * @param builder
+ * @param user
+ */
+function handleDepartmentAbility(builder: AbilityBuilder<AppAbility>, user: ReqUser) {
+  // 获取用户负责的部门 ID 列表
+  const leadingDeptIds = user.leadingDepartments?.map((d) => d.id) ?? []
+  // 获取用户所属的部门 ID 列表
+  const memberDeptIds = user.departments?.map((d) => d.id) ?? []
+
+  // 部门负责人：管理本部门及子部门
+  if (leadingDeptIds.length > 0) {
+    builder.can(Actions.Manage, 'Department', { id: { in: leadingDeptIds } })
+    builder.can(Actions.Manage, 'Department', { parentId: { in: leadingDeptIds } })
+  }
+
+  // 部门成员：仅查看本部门
+  if (memberDeptIds.length > 0) {
+    builder.can(Actions.Read, 'Department', { id: { in: memberDeptIds } })
+  }
 }

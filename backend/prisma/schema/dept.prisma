@@ -1,0 +1,28 @@
+/// 部门模型
+model Department {
+    id          String       @id() @default(cuid())
+    createdAt   DateTime     @default(now())
+    updatedAt   DateTime     @updatedAt()
+    /// 部门名称
+    name        String
+    /// 部门描述
+    description String?
+    /// 禁用状态
+    disabled    Boolean      @default(false)
+    /// 父部门 ID（一级部门为 null）
+    parentId    String?
+    /// 父部门（自关联）
+    parent      Department?  @relation("DeptHierarchy", fields: [parentId], references: [id])
+    /// 子部门列表
+    children    Department[] @relation("DeptHierarchy")
+    /// 部门成员（隐式多对多）
+    members     User[]       @relation("DeptMembers")
+    /// 部门负责人（隐式多对多）
+    leaders     User[]       @relation("DeptLeaders")
+    /// 创建人 ID
+    createdById String?
+    /// 创建人
+    createdBy   User?        @relation("DeptCreator", fields: [createdById], references: [id])
+
+    @@map("system_departments")
+}

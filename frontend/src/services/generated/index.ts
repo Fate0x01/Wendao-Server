@@ -6,15 +6,31 @@
  * OpenAPI spec version: 1.0
  */
 import type {
+  AddMemberDto,
+  CreateDeptDto,
   CreateRoleDto,
   CreateUserDto,
+  DeptQueryDto,
   LoginDto,
+  MembersQueryDto,
   RefreshTokenDto,
+  RemoveMemberDto,
   RoleQueryDto,
+  SetLeadersDto,
   SysAuthControllerGetUserInfo200,
   SysAuthControllerGetUserPermissions200,
   SysAuthControllerLogin200,
   SysAuthControllerRefresh200,
+  SysDeptControllerAddMember200,
+  SysDeptControllerCreateDept200,
+  SysDeptControllerDeleteDept200,
+  SysDeptControllerGetDept200,
+  SysDeptControllerGetDeptList200,
+  SysDeptControllerGetDeptMembers200,
+  SysDeptControllerGetDeptTree200,
+  SysDeptControllerRemoveMember200,
+  SysDeptControllerSetLeaders200,
+  SysDeptControllerUpdateDept200,
   SysRoleControllerCreateRole200,
   SysRoleControllerDeleteRole200,
   SysRoleControllerGetPermissions200,
@@ -26,6 +42,7 @@ import type {
   SysUserControllerGetUser200,
   SysUserControllerGetUsers200,
   SysUserControllerUpdateUser200,
+  UpdateDeptDto,
   UpdateRoleBodyDto,
   UpdateUserBodyDto,
   UserQueryDto
@@ -234,7 +251,141 @@ const sysRoleControllerUpdateRole = (
       options);
     }
   
-return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole}};
+/**
+ * @summary 创建部门
+ */
+const sysDeptControllerCreateDept = (
+    createDeptDto: CreateDeptDto,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerCreateDept200>>,) => {
+      return customInstance<SysDeptControllerCreateDept200>(
+      {url: `/sys-dept/create`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: createDeptDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 更新部门
+ */
+const sysDeptControllerUpdateDept = (
+    updateDeptDto: UpdateDeptDto,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerUpdateDept200>>,) => {
+      return customInstance<SysDeptControllerUpdateDept200>(
+      {url: `/sys-dept/update`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: updateDeptDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 部门详情
+ */
+const sysDeptControllerGetDept = (
+    id: string,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerGetDept200>>,) => {
+      return customInstance<SysDeptControllerGetDept200>(
+      {url: `/sys-dept/${id}`, method: 'GET'
+    },
+      options);
+    }
+  
+/**
+ * @summary 删除部门
+ */
+const sysDeptControllerDeleteDept = (
+    id: string,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerDeleteDept200>>,) => {
+      return customInstance<SysDeptControllerDeleteDept200>(
+      {url: `/sys-dept/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+/**
+ * @summary 部门列表
+ */
+const sysDeptControllerGetDeptList = (
+    deptQueryDto: DeptQueryDto,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerGetDeptList200>>,) => {
+      return customInstance<SysDeptControllerGetDeptList200>(
+      {url: `/sys-dept/list`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: deptQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 部门树
+ */
+const sysDeptControllerGetDeptTree = (
+    
+ options?: SecondParameter<typeof customInstance<SysDeptControllerGetDeptTree200>>,) => {
+      return customInstance<SysDeptControllerGetDeptTree200>(
+      {url: `/sys-dept/tree`, method: 'GET'
+    },
+      options);
+    }
+  
+/**
+ * @summary 部门成员列表
+ */
+const sysDeptControllerGetDeptMembers = (
+    membersQueryDto: MembersQueryDto,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerGetDeptMembers200>>,) => {
+      return customInstance<SysDeptControllerGetDeptMembers200>(
+      {url: `/sys-dept/members`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: membersQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 添加部门成员
+ */
+const sysDeptControllerAddMember = (
+    addMemberDto: AddMemberDto,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerAddMember200>>,) => {
+      return customInstance<SysDeptControllerAddMember200>(
+      {url: `/sys-dept/add-member`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: addMemberDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 移除部门成员
+ */
+const sysDeptControllerRemoveMember = (
+    removeMemberDto: RemoveMemberDto,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerRemoveMember200>>,) => {
+      return customInstance<SysDeptControllerRemoveMember200>(
+      {url: `/sys-dept/remove-member`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: removeMemberDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 设置部门负责人
+ */
+const sysDeptControllerSetLeaders = (
+    setLeadersDto: SetLeadersDto,
+ options?: SecondParameter<typeof customInstance<SysDeptControllerSetLeaders200>>,) => {
+      return customInstance<SysDeptControllerSetLeaders200>(
+      {url: `/sys-dept/set-leaders`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: setLeadersDto
+    },
+      options);
+    }
+  
+return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders}};
 export type SysAuthControllerLoginResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerLogin']>>>
 export type SysAuthControllerRefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerRefresh']>>>
 export type SysAuthControllerGetUserInfoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerGetUserInfo']>>>
@@ -250,3 +401,13 @@ export type SysRoleControllerGetPermissionsResult = NonNullable<Awaited<ReturnTy
 export type SysRoleControllerGetRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysRoleControllerGetRole']>>>
 export type SysRoleControllerDeleteRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysRoleControllerDeleteRole']>>>
 export type SysRoleControllerUpdateRoleResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysRoleControllerUpdateRole']>>>
+export type SysDeptControllerCreateDeptResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerCreateDept']>>>
+export type SysDeptControllerUpdateDeptResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerUpdateDept']>>>
+export type SysDeptControllerGetDeptResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerGetDept']>>>
+export type SysDeptControllerDeleteDeptResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerDeleteDept']>>>
+export type SysDeptControllerGetDeptListResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerGetDeptList']>>>
+export type SysDeptControllerGetDeptTreeResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerGetDeptTree']>>>
+export type SysDeptControllerGetDeptMembersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerGetDeptMembers']>>>
+export type SysDeptControllerAddMemberResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerAddMember']>>>
+export type SysDeptControllerRemoveMemberResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerRemoveMember']>>>
+export type SysDeptControllerSetLeadersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerSetLeaders']>>>

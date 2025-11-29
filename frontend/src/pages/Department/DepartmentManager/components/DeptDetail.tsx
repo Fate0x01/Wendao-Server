@@ -1,10 +1,11 @@
-import React, { memo, useEffect, useState } from 'react';
-import { Button, Descriptions, Divider, Loading, MessagePlugin, Popconfirm, Space, Tag } from 'tdesign-react';
-import { EditIcon, DeleteIcon, UserIcon } from 'tdesign-icons-react';
+import Show from 'components/Show';
 import dayjs from 'dayjs';
+import React, { memo, useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import api from 'services';
 import type { DeptDetailEntity, DeptMemberEntity } from 'services/generated/model';
-import { useNavigate } from 'react-router-dom';
+import { DeleteIcon, EditIcon, UserIcon } from 'tdesign-icons-react';
+import { Button, Descriptions, Divider, Loading, MessagePlugin, Space, Tag } from 'tdesign-react';
 
 export interface DeptDetailProps {
   /** 部门 ID */
@@ -97,22 +98,20 @@ const DeptDetail: React.FC<DeptDetailProps> = ({ deptId, onEdit, onDeleted, canE
           <Button variant='outline' icon={<UserIcon />} onClick={handleViewMembers}>
             查看成员
           </Button>
-          {canEdit && (
+          <Show permission='dept:update'>
             <Button variant='outline' icon={<EditIcon />} onClick={() => onEdit?.(detail)}>
               编辑
             </Button>
-          )}
-          {canDelete && (
-            <Popconfirm content='确定要删除该部门吗？删除后不可恢复。' onConfirm={handleDelete}>
-              <Button variant='outline' theme='danger' icon={<DeleteIcon />} loading={deleting}>
-                删除
-              </Button>
-            </Popconfirm>
-          )}
+          </Show>
+          <Show permission='dept:delete'>
+            <Button variant='outline' theme='danger' icon={<DeleteIcon />} loading={deleting} onClick={handleDelete}>
+              删除
+            </Button>
+          </Show>
         </Space>
       </div>
 
-      <Descriptions column={2} itemStyle={{ marginBottom: 16 }}>
+      <Descriptions column={2}>
         <Descriptions.DescriptionsItem label='部门名称'>{detail.name}</Descriptions.DescriptionsItem>
         <Descriptions.DescriptionsItem label='部门状态'>
           <Tag theme={detail.disabled ? 'danger' : 'success'} variant='light'>
@@ -153,4 +152,3 @@ const DeptDetail: React.FC<DeptDetailProps> = ({ deptId, onEdit, onDeleted, canE
 };
 
 export default memo(DeptDetail);
-

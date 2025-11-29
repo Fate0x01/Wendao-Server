@@ -1,10 +1,10 @@
 import React, { memo, useEffect, useState } from 'react';
-import { Button, Loading, Table, Tag } from 'tdesign-react';
-import { ChevronRightIcon } from 'tdesign-icons-react';
-import type { PrimaryTableCol } from 'tdesign-react/es/table';
 import { useNavigate } from 'react-router-dom';
 import api from 'services';
 import type { DeptMemberEntity } from 'services/generated/model';
+import { ChevronRightIcon } from 'tdesign-icons-react';
+import { Button, Loading, Table, Tag } from 'tdesign-react';
+import type { PrimaryTableCol } from 'tdesign-react/es/table';
 
 export interface MemberListProps {
   /** 部门 ID */
@@ -98,16 +98,7 @@ const MemberList: React.FC<MemberListProps> = ({ deptId, maxCount = 5 }) => {
       </div>
 
       {members.length > 0 ? (
-        <Table
-          data={members}
-          columns={columns}
-          rowKey='id'
-          size='small'
-          bordered
-          stripe
-          pagination={false}
-          loading={loading}
-        />
+        <Table data={members} columns={columns} rowKey='id' size='small' bordered stripe loading={loading} />
       ) : (
         <div style={{ padding: 20, textAlign: 'center', color: 'var(--td-text-color-placeholder)' }}>暂无成员</div>
       )}
@@ -116,4 +107,3 @@ const MemberList: React.FC<MemberListProps> = ({ deptId, maxCount = 5 }) => {
 };
 
 export default memo(MemberList);
-

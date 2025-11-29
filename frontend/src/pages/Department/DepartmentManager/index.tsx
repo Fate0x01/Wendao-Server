@@ -1,3 +1,4 @@
+import Show from 'components/Show';
 import React, { memo, useCallback, useState } from 'react';
 import type { DeptDetailEntity, DeptTreeEntity } from 'services/generated/model';
 import { AddIcon, FolderIcon, RefreshIcon } from 'tdesign-icons-react';
@@ -71,9 +72,11 @@ const DepartmentManager: React.FC = () => {
       <div className='flex flex-1 flex-col overflow-hidden rounded-[var(--td-radius-medium)] bg-[var(--td-bg-color-container)] p-6 shadow-sm'>
         {/* 工具栏 */}
         <div className='mb-4 flex-shrink-0'>
-          <Button theme='primary' icon={<AddIcon />} onClick={handleAdd}>
-            新建部门
-          </Button>
+          <Show permission='dept:create'>
+            <Button theme='primary' icon={<AddIcon />} onClick={handleAdd}>
+              新建部门
+            </Button>
+          </Show>
         </div>
 
         <div className='flex-1 overflow-auto'>

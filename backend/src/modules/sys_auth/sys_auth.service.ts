@@ -6,7 +6,7 @@ import * as bcrypt from 'bcryptjs'
 import { randomUUID } from 'crypto'
 import Redis from 'ioredis'
 import { PrismaService } from 'nestjs-prisma'
-import { getRefreshTokenKey } from 'src/common/constant/redis.constant'
+import { getRefreshTokenKey, getUserInfoKey } from 'src/common/constant/redis.constant'
 import { LoginDto } from './dto/login.dto'
 import { RefreshTokenDto } from './dto/refresh-token.dto'
 import { ReqContext } from './types/request'
@@ -71,6 +71,8 @@ export class SysAuthService {
 
   /** 签发访问令牌与刷新令牌 */
   private async signWithRefresh(id: string, username: string) {
+    // 清除用户信息缓存，确保下次鉴权时获取最新权限
+    await this.clearUserInfoCache(id)
     const sessionId = randomUUID()
     const accessPayload = { id, username, type: 'access', sid: sessionId }
     const refreshPayload = { id, username, type: 'refresh', sid: sessionId }
@@ -113,6 +115,12 @@ export class SysAuthService {
     if (!this.redisService) return
     const hashed = await bcrypt.hash(refreshToken, 10)
     await this.redisService.set(getRefreshTokenKey(userId), hashed, 'EX', this.refreshExpiresInSeconds)
+  }
+
+  /** 清除用户信息缓存 */
+  private async clearUserInfoCache(userId: string) {
+    if (!this.redisService) return
+    await this.redisService.del(getUserInfoKey(userId))
   }
 
   /** 将过期时间转换为秒（支持 s/m/h/d） */

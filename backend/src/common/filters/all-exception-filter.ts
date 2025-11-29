@@ -21,10 +21,8 @@ export class AllExceptionsFilter implements ExceptionFilter {
       if (Array.isArray(message)) {
         message = message[0]
       }
-    }
-
-    // 处理运行时错误
-    if (exception instanceof Error) {
+    } else if (exception instanceof Error) {
+      // 处理运行时错误
       message = this.configService.get('NODE_ENV') === 'development' ? exception.message : '服务异常'
       console.error(exception)
     }

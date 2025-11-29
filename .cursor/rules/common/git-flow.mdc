@@ -1,118 +1,131 @@
 ---
-description: Gitflow Workflow Rules. These rules should be applied when performing git operations.
-globs: 
+description: Gitflow 工作流规范，执行 git 操作时需遵循。
+globs:
 alwaysApply: false
 ---
-# Gitflow Workflow Rules
 
-commit message use Chinese
+# Gitflow 工作流规则
 
-## Main Branches
+提交信息须使用中文。
 
-### main (or master)
-- Contains production-ready code
-- Never commit directly to main
-- Only accepts merges from:
-  - hotfix/* branches
-  - release/* branches
-- Must be tagged with version number after each merge
+## 主分支
+
+### main（或 master）
+
+- 保存可发布的生产代码
+- 禁止直接提交
+- 仅接受以下分支的合并：
+  - hotfix/\*
+  - release/\*
+- 每次合并后需打版本标签
 
 ### develop
-- Main development branch
-- Contains latest delivered development changes
-- Source branch for feature branches
-- Never commit directly to develop
 
-## Supporting Branches
+- 日常开发主干
+- 保存最新的开发交付内容
+- feature 分支从此创建
+- 禁止直接提交
 
-### feature/*
-- Branch from: develop
-- Merge back into: develop
-- Naming convention: feature/[issue-id]-descriptive-name
-- Example: feature/123-user-authentication
-- Must be up-to-date with develop before creating PR
-- Delete after merge
+## 辅助分支
 
-### release/*
-- Branch from: develop
-- Merge back into: 
+### feature/\*
+
+- 来源：develop
+- 合并回：develop
+- 命名：feature/[issue-id]-描述
+- 示例：feature/123-user-authentication
+- 创建 PR 前需保持与 develop 同步
+- 合并后删除
+
+### release/\*
+
+- 来源：develop
+- 合并回：
   - main
   - develop
-- Naming convention: release/vX.Y.Z
-- Example: release/v1.2.0
-- Only bug fixes, documentation, and release-oriented tasks
-- No new features
-- Delete after merge
+- 命名：release/vX.Y.Z
+- 示例：release/v1.2.0
+- 仅允许修复、文档、发布准备，不接受新功能
+- 合并后删除
 
-### hotfix/*
-- Branch from: main
-- Merge back into:
+### hotfix/\*
+
+- 来源：main
+- 合并回：
   - main
   - develop
-- Naming convention: hotfix/vX.Y.Z
-- Example: hotfix/v1.2.1
-- Only for urgent production fixes
-- Delete after merge
+- 命名：hotfix/vX.Y.Z
+- 示例：hotfix/v1.2.1
+- 仅用于紧急线上修复
+- 合并后删除
 
-## Commit Messages
+## 提交信息规范
 
-- Format: `type(scope): description`
-- Types:
-  - build: 
-  - chore: Maintenance tasks
-  - ci: 
-  - docs: Documentation changes
-  - feat: New feature
-  - fix: Bug fix
-  - perf: Performance optimization
-  - refactor: Code refactoring
-  - style: Formatting, missing semicolons, etc.
-  - test: Adding tests
+- 格式：`type(scope): 描述`
+- type 取值：
+  - build：构建相关
+  - chore：日常维护
+  - ci：持续集成
+  - docs：文档更新
+  - feat：新功能
+  - fix：缺陷修复
+  - perf：性能优化
+  - refactor：重构
+  - style：格式/风格调整
+  - test：测试相关
 
-## Version Control
+## 提交拆分与预览
 
-### Semantic Versioning
-- MAJOR version for incompatible API changes
-- MINOR version for backwards-compatible functionality
-- PATCH version for backwards-compatible bug fixes
+- 按事务与模块拆分提交：先按本次变动涉及的模块划分提交单元，确保每个提交只覆盖单一模块或紧密相关的事务。
+- 分批提交流程：为每个模块依次构造提交，逐个提交完成。
+- 提交前预览：在执行每次提交前，需向用户展示本次提交的文件列表及预期提交信息，待用户确认后再提交。
 
-## Pull Request Rules
+## 版本管理
 
-1. All changes must go through Pull Requests
-2. Required approvals: minimum 1
-3. CI checks must pass
-4. No direct commits to protected branches (main, develop)
-5. Branch must be up to date before merging
-6. Delete branch after merge
+### 语义化版本
 
-## Branch Protection Rules
+- MAJOR：不兼容的变更
+- MINOR：向后兼容的新功能
+- PATCH：向后兼容的缺陷修复
 
-### main & develop
-- Require pull request reviews
-- Require status checks to pass
-- Require branches to be up to date
-- Include administrators in restrictions
-- No force pushes
-- No deletions
+## Pull Request 规则
 
-## Release Process
+1. 所有改动必须通过 PR
+2. 最少 1 人批准
+3. CI 必须通过
+4. 受保护分支（main、develop）禁止直接提交
+5. 合并前分支需与目标分支保持最新
+6. 合并后删除分支
 
-1. Create release branch from develop
-2. Bump version numbers
-3. Fix any release-specific issues
-4. Create PR to main
-5. After merge to main:
-   - Tag release
-   - Merge back to develop
-   - Delete release branch
+## 分支保护
 
-## Hotfix Process
+### main 与 develop
 
-1. Create hotfix branch from main
-2. Fix the issue
-3. Bump patch version
-4. Create PR to main
-5. After merge to main:
-   - Tag release
-   - Merge back to develop
-   - Delete hotfix branch 
+- 需要 PR 审核
+- 需要状态检查通过
+- 需要分支保持最新
+- 将管理员纳入限制
+- 禁止强制推送
+- 禁止删除分支
+
+## 发布流程
+
+1. 从 develop 创建 release 分支
+2. 更新版本号
+3. 修复发布相关问题
+4. 创建指向 main 的 PR
+5. 合并到 main 后：
+   - 打版本标签
+   - 合并回 develop
+   - 删除 release 分支
+
+## 热修复流程
+
+1. 从 main 创建 hotfix 分支
+2. 修复问题
+3. 更新补丁版本号
+4. 创建指向 main 的 PR
+5. 合并到 main 后：
+   - 打版本标签
+   - 合并回 develop
+   - 删除 hotfix 分支

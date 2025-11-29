@@ -69,7 +69,7 @@ const renderFormFields = () => (
       rules={[
         { required: true, message: '请输入角色名称' },
         { min: 2, message: '角色名称至少2个字符' },
-        { max: 16, message: '角色名称最多16个字符' },
+        { max: 30, message: '角色名称最多30个字符' },
       ]}
     >
       <Input placeholder='请输入角色名称' />

@@ -75,12 +75,22 @@ export default function Login({ loginConfig }: LoginProps) {
     changeLoginType(val);
   };
 
-  const handleDevLogin = (type: 'admin' | 'user') => {
-    const credentials =
-      type === 'admin' ? { username: 'admin', password: 'admin123' } : { username: 'user', password: 'user123' };
-    // 填充表单以便视觉确认（可选）
+  const handleDevLogin = (type: 'admin' | 'leader' | 'groupMember') => {
+    let credentials;
+    switch (type) {
+      case 'admin':
+        credentials = { username: 'admin', password: 'admin123' };
+        break;
+      case 'leader':
+        credentials = { username: '刘德华', password: 'a123456' };
+        break;
+      case 'groupMember':
+        credentials = { username: '一组成员', password: 'a123456' };
+        break;
+      default:
+        credentials = {};
+    }
     formRef.current?.setFieldsValue?.(credentials);
-    // 直接提交
     loginMutation.mutate(credentials as LoginDto);
   };
 
@@ -98,12 +108,15 @@ export default function Login({ loginConfig }: LoginProps) {
             {import.meta.env?.MODE === 'development' && (
               <div className='mb-4 p-3 rounded-md border border-dashed border-gray-300 bg-gray-50 dark:bg-gray-800 dark:border-gray-700'>
                 <div className='mb-2 text-xs text-gray-500'>开发环境快捷入口</div>
-                <div className='flex gap-2'>
+                <div className='flex gap-2 flex-wrap'>
                   <Button block variant='outline' size='small' onClick={() => handleDevLogin('admin')}>
                     Admin
                   </Button>
-                  <Button block variant='outline' size='small' onClick={() => handleDevLogin('user')}>
-                    User
+                  <Button block variant='outline' size='small' onClick={() => handleDevLogin('leader')}>
+                    负责人（刘德华）
+                  </Button>
+                  <Button block variant='outline' size='small' onClick={() => handleDevLogin('groupMember')}>
+                    组员（一组成员）
                   </Button>
                 </div>
               </div>

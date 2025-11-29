@@ -3,6 +3,7 @@ import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get,
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
 import { BaseRole } from '@prisma/client'
 import * as bcrypt from 'bcryptjs'
+import _ from 'lodash'
 import { ClsService } from 'nestjs-cls'
 import { PrismaService } from 'nestjs-prisma'
 import { Permission } from 'src/common/decorators/permission.decorator'
@@ -38,6 +39,13 @@ export class SysDeptController {
   }
 
   /**
+   * 检查用户是否为普通管理员
+   */
+  private isNormalAdmin(user: ReqUser): boolean {
+    return user.roles.some((r) => r.name === BaseRole.NORMAL_ADMIN)
+  }
+
+  /**
    * 获取用户负责的部门ID列表
    */
   private async getLeadingDeptIds(userId: string): Promise<string[]> {
@@ -46,6 +54,105 @@ export class SysDeptController {
       select: { leadingDepartments: { select: { id: true } } },
     })
     return user?.leadingDepartments.map((d) => d.id) ?? []
+  }
+
+  /**
+   * 获取用户负责的一级部门ID列表
+   */
+  private async getLeadingLevel1DeptIds(userId: string): Promise<string[]> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        leadingDepartments: {
+          where: { parentId: null },
+          select: { id: true },
+        },
+      },
+    })
+    return user?.leadingDepartments.map((d) => d.id) ?? []
+  }
+
+  /**
+   * 根据用户在所有部门的身份，计算其应该拥有的最高角色
+   * 规则：
+   * - 一级部门负责人 → NORMAL_ADMIN
+   * - 二级部门负责人 → DEPARTMENT_LEADER
+   * - 二级部门成员 → DEPARTMENT_MEMBER
+   * - 无任何部门关联 → null (不分配部门相关角色)
+   */
+  private async calculateUserDeptRole(userId: string): Promise<BaseRole | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: {
+        leadingDepartments: {
+          select: { id: true, parentId: true },
+        },
+        departments: {
+          select: { id: true, parentId: true },
+        },
+      },
+    })
+    if (!user) return null
+
+    // 检查是否是一级部门负责人
+    const isLevel1Leader = user.leadingDepartments.some((d) => d.parentId === null)
+    if (isLevel1Leader) return BaseRole.NORMAL_ADMIN
+
+    // 检查是否是二级部门负责人
+    const isLevel2Leader = user.leadingDepartments.some((d) => d.parentId !== null)
+    if (isLevel2Leader) return BaseRole.DEPARTMENT_LEADER
+
+    // 检查是否是二级部门成员
+    const isLevel2Member = user.departments.some((d) => d.parentId !== null)
+    if (isLevel2Member) return BaseRole.DEPARTMENT_MEMBER
+
+    return null
+  }
+
+  /**
+   * 同步更新用户的部门相关角色
+   * 根据用户当前在所有部门中的身份，设置正确的角色
+   */
+  private async syncUserDeptRole(userId: string): Promise<void> {
+    const targetRole = await this.calculateUserDeptRole(userId)
+    const deptRoleNames = [BaseRole.NORMAL_ADMIN, BaseRole.DEPARTMENT_LEADER, BaseRole.DEPARTMENT_MEMBER] as string[]
+
+    // 获取所有部门相关角色
+    const roles = await this.prisma.role.findMany({
+      where: { name: { in: deptRoleNames } },
+      select: { id: true, name: true },
+    })
+    const roleMap = new Map(roles.map((r) => [r.name, r.id]))
+
+    // 获取用户当前角色
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { roles: { select: { id: true, name: true } } },
+    })
+    if (!user) return
+
+    const currentDeptRoleNames = user.roles.filter((r) => deptRoleNames.includes(r.name)).map((r) => r.name)
+
+    // 如果目标角色与当前角色一致，无需更新
+    if (targetRole && currentDeptRoleNames.length === 1 && currentDeptRoleNames[0] === targetRole) {
+      return
+    }
+
+    // 移除所有部门相关角色
+    const rolesToDisconnect = roles.filter((r) => currentDeptRoleNames.includes(r.name)).map((r) => ({ id: r.id }))
+
+    // 添加目标角色
+    const targetRoleId = targetRole ? roleMap.get(targetRole) : null
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: {
+        roles: {
+          disconnect: rolesToDisconnect,
+          ...(targetRoleId ? { connect: { id: targetRoleId } } : {}),
+        },
+      },
+    })
   }
 
   @Post('create')
@@ -152,10 +259,10 @@ export class SysDeptController {
   @Permission({ group: '部门管理', name: '部门树', model: 'Department', code: 'dept:tree' })
   async getDeptTree() {
     const currentUser: ReqUser = this.cls.get('user')
-    const isAdmin = this.isSuperAdmin(currentUser)
+    const isSuperAdmin = this.isSuperAdmin(currentUser)
 
     // 超管：返回所有一级部门及其子部门
-    if (isAdmin) {
+    if (isSuperAdmin) {
       const depts = await this.prisma.department.findMany({
         where: { parentId: null },
         include: {
@@ -173,45 +280,64 @@ export class SysDeptController {
       return ResultData.ok(depts)
     }
 
-    // 非超管：根据负责的部门和所属部门构建树
+    // 获取用户负责的部门和所属部门
     const leadingDeptIds = currentUser.leadingDepartments?.map((d) => d.id) ?? []
     const memberDeptIds = currentUser.departments?.map((d) => d.id) ?? []
-    const allDeptIds = [...new Set([...leadingDeptIds, ...memberDeptIds])]
 
-    if (allDeptIds.length === 0) {
+    if (leadingDeptIds.length === 0 && memberDeptIds.length === 0) {
       return ResultData.ok([])
     }
 
-    // 查询用户关联的所有部门（包含父部门信息）
-    const userDepts = await this.prisma.department.findMany({
-      where: { id: { in: allDeptIds } },
+    // 查询用户负责的一级部门
+    const leadingLevel1Depts = await this.prisma.department.findMany({
+      where: {
+        id: { in: leadingDeptIds },
+        parentId: null,
+      },
+      select: { id: true },
+    })
+    const leadingLevel1DeptIds = leadingLevel1Depts.map((d) => d.id)
+
+    // 查询用户负责或所属的二级部门
+    const allUserDeptIds = [...new Set([...leadingDeptIds, ...memberDeptIds])]
+    const userLevel2Depts = await this.prisma.department.findMany({
+      where: {
+        id: { in: allUserDeptIds },
+        parentId: { not: null },
+      },
       select: { id: true, parentId: true },
     })
 
-    // 收集需要展示的一级部门ID
-    const level1DeptIds = new Set<string>()
-    // 收集用户可管理/查看的二级部门ID
-    const accessibleLevel2DeptIds = new Set<string>()
-
-    for (const dept of userDepts) {
-      if (!dept.parentId) {
-        // 这是一级部门
-        level1DeptIds.add(dept.id)
-      } else {
-        // 这是二级部门，记录其父部门和自身
-        level1DeptIds.add(dept.parentId)
-        accessibleLevel2DeptIds.add(dept.id)
-      }
+    // 普管（一级部门负责人）：返回其负责的一级部门及其所有子部门
+    if (leadingLevel1DeptIds.length > 0) {
+      const depts = await this.prisma.department.findMany({
+        where: { id: { in: leadingLevel1DeptIds } },
+        include: {
+          children: {
+            include: {
+              leaders: { select: { id: true, username: true } },
+              _count: { select: { members: true } },
+            },
+          },
+          leaders: { select: { id: true, username: true } },
+          _count: { select: { members: true } },
+        },
+        orderBy: { createdAt: 'asc' },
+      })
+      return ResultData.ok(depts)
     }
 
-    // 查询一级部门及其子部门
+    // 二级部门负责人或成员：仅返回其关联的二级部门
+    // 需要包含父部门信息供前端展示树结构
+    const accessibleLevel2DeptIds = userLevel2Depts.map((d) => d.id)
+    const parentIds = _.uniq(userLevel2Depts.map((d) => d.parentId).filter(Boolean)) as string[]
+
+    // 查询父部门作为树的根节点，但只展示用户有权限的子部门
     const depts = await this.prisma.department.findMany({
-      where: { id: { in: Array.from(level1DeptIds) } },
+      where: { id: { in: parentIds } },
       include: {
         children: {
-          where: leadingDeptIds.some((id) => level1DeptIds.has(id))
-            ? undefined // 如果是一级部门负责人，可以看到所有子部门
-            : { id: { in: Array.from(accessibleLevel2DeptIds) } }, // 否则只能看到自己关联的二级部门
+          where: { id: { in: accessibleLevel2DeptIds } },
           include: {
             leaders: { select: { id: true, username: true } },
             _count: { select: { members: true } },
@@ -326,12 +452,12 @@ export class SysDeptController {
   @Permission({ group: '部门管理', name: '添加部门成员', model: 'Department', code: 'dept:addMember' })
   async addMember(@Body() dto: AddMemberDto) {
     const currentUser: ReqUser = this.cls.get('user')
-    const isAdmin = this.isSuperAdmin(currentUser)
+    const isSuperAdmin = this.isSuperAdmin(currentUser)
 
     // 查询目标部门
     const dept = await this.prisma.department.findUnique({
       where: { id: dto.departmentId },
-      select: { id: true, parentId: true, leaders: { select: { id: true } } },
+      select: { id: true, parentId: true },
     })
     if (!dept) throw new NotFoundException('部门不存在')
 
@@ -339,54 +465,46 @@ export class SysDeptController {
     const isLevel1Dept = !dept.parentId
     const isLevel2Dept = !!dept.parentId
 
-    // 权限校验和角色分配
-    let assignRole: BaseRole
+    // 权限校验和负责人身份判定
+    let assignAsLeader = dto.isLeader ?? false
 
-    if (isAdmin) {
+    if (isSuperAdmin) {
       // 超管可以操作任何部门
+      // 一级部门添加的用户默认为负责人
       if (isLevel1Dept) {
-        // 超管添加到一级部门，默认为负责人
-        assignRole = BaseRole.DEPARTMENT_LEADER
-      } else {
-        // 超管添加到二级部门，根据 isLeader 决定角色
-        assignRole = dto.isLeader ? BaseRole.DEPARTMENT_LEADER : BaseRole.DEPARTMENT_MEMBER
+        assignAsLeader = true
       }
     } else {
-      // 非超管，检查是否是该部门或其父部门的负责人
-      const leadingDeptIds = await this.getLeadingDeptIds(currentUser.id)
-
-      if (isLevel2Dept) {
-        // 添加到二级部门
-        const isParentLeader = leadingDeptIds.includes(dept.parentId!)
-        const isDeptLeader = leadingDeptIds.includes(dto.departmentId)
-
-        if (isParentLeader) {
-          // 一级部门负责人添加到二级部门，分配 DEPARTMENT_LEADER
-          assignRole = BaseRole.DEPARTMENT_LEADER
-        } else if (isDeptLeader) {
-          // 二级部门负责人添加成员，分配 DEPARTMENT_MEMBER
-          assignRole = BaseRole.DEPARTMENT_MEMBER
-        } else {
-          throw new ForbiddenException('无权限在该部门添加成员')
-        }
-      } else {
+      // 非超管校验
+      if (isLevel1Dept) {
         throw new ForbiddenException('只有超级管理员可以在一级部门添加成员')
       }
+
+      const leadingDeptIds = await this.getLeadingDeptIds(currentUser.id)
+      const leadingLevel1DeptIds = await this.getLeadingLevel1DeptIds(currentUser.id)
+      const isParentLeader = leadingLevel1DeptIds.includes(dept.parentId!)
+      const isDeptLeader = leadingDeptIds.includes(dto.departmentId)
+
+      if (!isParentLeader && !isDeptLeader) {
+        throw new ForbiddenException('无权限在该部门添加成员')
+      }
+
+      // 一级部门负责人（NORMAL_ADMIN）添加的用户为二级部门负责人
+      if (isParentLeader) {
+        assignAsLeader = true
+      }
+      // 二级部门负责人添加的用户为普通成员
+      // assignAsLeader 保持 false
     }
 
-    // 查找或创建角色
-    const role = await this.prisma.role.findFirst({ where: { name: assignRole } })
-    if (!role) throw new BadRequestException(`系统角色 ${assignRole} 不存在`)
-
-    // 创建用户并关联部门
+    // 创建用户并关联部门（不直接分配角色，由 syncUserDeptRole 统一处理）
     const user = await this.prisma.user.create({
       data: {
         username: dto.username,
         password: await bcrypt.hash(dto.password, 10),
         createdById: currentUser.id,
-        roles: { connect: { id: role.id } },
         departments: { connect: { id: dto.departmentId } },
-        ...(dto.isLeader || assignRole === BaseRole.DEPARTMENT_LEADER ? { leadingDepartments: { connect: { id: dto.departmentId } } } : {}),
+        ...(assignAsLeader ? { leadingDepartments: { connect: { id: dto.departmentId } } } : {}),
       },
       select: {
         id: true,
@@ -397,9 +515,12 @@ export class SysDeptController {
       },
     })
 
+    // 同步用户角色
+    await this.syncUserDeptRole(user.id)
+
     return ResultData.ok({
       ...user,
-      isLeader: dto.isLeader || assignRole === BaseRole.DEPARTMENT_LEADER,
+      isLeader: assignAsLeader,
     })
   }
 
@@ -409,7 +530,7 @@ export class SysDeptController {
   @Permission({ group: '部门管理', name: '关联已有用户', model: 'Department', code: 'dept:linkMember' })
   async linkMember(@Body() dto: LinkMemberDto) {
     const currentUser: ReqUser = this.cls.get('user')
-    const isAdmin = this.isSuperAdmin(currentUser)
+    const isSuperAdmin = this.isSuperAdmin(currentUser)
 
     // 查询目标部门
     const dept = await this.prisma.department.findUnique({
@@ -420,18 +541,38 @@ export class SysDeptController {
 
     // 确定部门层级
     const isLevel1Dept = !dept.parentId
+    const isLevel2Dept = !!dept.parentId
 
     // 权限校验
-    if (!isAdmin) {
-      const leadingDeptIds = await this.getLeadingDeptIds(currentUser.id)
+    let assignAsLeader = dto.isLeader ?? false
+
+    if (isSuperAdmin) {
+      // 超管可以操作任何部门
+      // 一级部门添加的用户默认为负责人
+      if (isLevel1Dept) {
+        assignAsLeader = true
+      }
+    } else {
+      // 非超管校验
       if (isLevel1Dept) {
         throw new ForbiddenException('只有超级管理员可以在一级部门添加成员')
       }
-      const isParentLeader = leadingDeptIds.includes(dept.parentId!)
+
+      const leadingDeptIds = await this.getLeadingDeptIds(currentUser.id)
+      const leadingLevel1DeptIds = await this.getLeadingLevel1DeptIds(currentUser.id)
+      const isParentLeader = leadingLevel1DeptIds.includes(dept.parentId!)
       const isDeptLeader = leadingDeptIds.includes(dto.departmentId)
+
       if (!isParentLeader && !isDeptLeader) {
         throw new ForbiddenException('无权限在该部门添加成员')
       }
+
+      // 一级部门负责人（NORMAL_ADMIN）添加的用户为二级部门负责人
+      if (isParentLeader) {
+        assignAsLeader = true
+      }
+      // 二级部门负责人添加的用户为普通成员
+      // assignAsLeader 保持 false
     }
 
     // 校验用户是否存在
@@ -460,7 +601,7 @@ export class SysDeptController {
           where: { id: userId },
           data: {
             departments: { connect: { id: dto.departmentId } },
-            ...(dto.isLeader ? { leadingDepartments: { connect: { id: dto.departmentId } } } : {}),
+            ...(assignAsLeader ? { leadingDepartments: { connect: { id: dto.departmentId } } } : {}),
           },
           select: {
             id: true,
@@ -470,7 +611,11 @@ export class SysDeptController {
             updatedAt: true,
           },
         })
-        return { ...user, isLeader: dto.isLeader ?? false }
+
+        // 同步用户角色
+        await this.syncUserDeptRole(userId)
+
+        return { ...user, isLeader: assignAsLeader }
       }),
     )
 
@@ -510,6 +655,9 @@ export class SysDeptController {
       },
     })
 
+    // 同步用户角色
+    await this.syncUserDeptRole(dto.userId)
+
     return ResultData.ok({ ...user, isLeader: false })
   }
 
@@ -524,7 +672,10 @@ export class SysDeptController {
     // 校验部门权限
     const dept = await this.prisma.department.findFirst({
       where: { id: dto.departmentId, AND: [accessibleBy(ability).Department] },
-      include: { members: { select: { id: true } } },
+      include: {
+        members: { select: { id: true } },
+        leaders: { select: { id: true } },
+      },
     })
     if (!dept) throw new NotFoundException('部门不存在或无权限操作')
 
@@ -535,9 +686,11 @@ export class SysDeptController {
       throw new BadRequestException('负责人必须是该部门的成员')
     }
 
-    // 查找负责人角色
-    const leaderRole = await this.prisma.role.findFirst({ where: { name: BaseRole.DEPARTMENT_LEADER } })
-    if (!leaderRole) throw new BadRequestException('系统角色 DEPARTMENT_LEADER 不存在')
+    // 计算被移除的负责人和新增的负责人
+    const oldLeaderIds = dept.leaders.map((l) => l.id)
+    const newLeaderIds = dto.leaderIds
+    const removedLeaderIds = _.difference(oldLeaderIds, newLeaderIds)
+    const addedLeaderIds = _.difference(newLeaderIds, oldLeaderIds)
 
     // 更新部门负责人
     const updatedDept = await this.prisma.department.update({
@@ -550,12 +703,10 @@ export class SysDeptController {
       },
     })
 
-    // 为新负责人分配角色
-    for (const leaderId of dto.leaderIds) {
-      await this.prisma.user.update({
-        where: { id: leaderId },
-        data: { roles: { connect: { id: leaderRole.id } } },
-      })
+    // 同步所有受影响用户的角色
+    const affectedUserIds = [...removedLeaderIds, ...addedLeaderIds]
+    for (const userId of affectedUserIds) {
+      await this.syncUserDeptRole(userId)
     }
 
     return ResultData.ok(updatedDept)

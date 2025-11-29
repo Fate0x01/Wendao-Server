@@ -85,7 +85,7 @@ export default function Login({ loginConfig }: LoginProps) {
         credentials = { username: '刘德华', password: 'a123456' };
         break;
       case 'groupMember':
-        credentials = { username: '一组成员', password: 'a123456' };
+        credentials = { username: '一组成员01', password: 'a123456' };
         break;
       default:
         credentials = {};

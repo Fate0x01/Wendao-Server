@@ -63,7 +63,7 @@ const routes: IRouter[] = [
     meta: {
       title: '部门管理',
       Icon: UsergroupIcon,
-      allowRole: [BaseRole.SUPER_ADMIN, BaseRole.DEPARTMENT_LEADER],
+      allowRole: [BaseRole.SUPER_ADMIN, BaseRole.NORMAL_ADMIN, BaseRole.DEPARTMENT_LEADER],
     },
     children: [
       {

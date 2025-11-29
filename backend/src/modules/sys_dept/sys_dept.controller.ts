@@ -13,6 +13,7 @@ import { ReqUser } from '../sys_auth/types/request'
 import { AddMemberDto } from './dto/add-member.dto'
 import { CreateDeptDto } from './dto/create-dept.dto'
 import { DeptQueryDto } from './dto/dept-query.dto'
+import { LinkMemberDto } from './dto/link-member.dto'
 import { MembersQueryDto } from './dto/members-query.dto'
 import { RemoveMemberDto } from './dto/remove-member.dto'
 import { SetLeadersDto } from './dto/set-leaders.dto'
@@ -400,6 +401,80 @@ export class SysDeptController {
       ...user,
       isLeader: dto.isLeader || assignRole === BaseRole.DEPARTMENT_LEADER,
     })
+  }
+
+  @Post('link-member')
+  @ApiOperation({ summary: '关联已有用户到部门' })
+  @ApiResult(DeptMemberEntity, true)
+  @Permission({ group: '部门管理', name: '关联已有用户', model: 'Department', code: 'dept:linkMember' })
+  async linkMember(@Body() dto: LinkMemberDto) {
+    const currentUser: ReqUser = this.cls.get('user')
+    const isAdmin = this.isSuperAdmin(currentUser)
+
+    // 查询目标部门
+    const dept = await this.prisma.department.findUnique({
+      where: { id: dto.departmentId },
+      select: { id: true, parentId: true, members: { select: { id: true } } },
+    })
+    if (!dept) throw new NotFoundException('部门不存在')
+
+    // 确定部门层级
+    const isLevel1Dept = !dept.parentId
+
+    // 权限校验
+    if (!isAdmin) {
+      const leadingDeptIds = await this.getLeadingDeptIds(currentUser.id)
+      if (isLevel1Dept) {
+        throw new ForbiddenException('只有超级管理员可以在一级部门添加成员')
+      }
+      const isParentLeader = leadingDeptIds.includes(dept.parentId!)
+      const isDeptLeader = leadingDeptIds.includes(dto.departmentId)
+      if (!isParentLeader && !isDeptLeader) {
+        throw new ForbiddenException('无权限在该部门添加成员')
+      }
+    }
+
+    // 校验用户是否存在
+    const existingUsers = await this.prisma.user.findMany({
+      where: { id: { in: dto.userIds } },
+      select: { id: true },
+    })
+    const existingUserIds = existingUsers.map((u) => u.id)
+    const invalidUserIds = dto.userIds.filter((id) => !existingUserIds.includes(id))
+    if (invalidUserIds.length > 0) {
+      throw new NotFoundException(`用户不存在: ${invalidUserIds.join(', ')}`)
+    }
+
+    // 过滤已在部门中的用户
+    const existingMemberIds = dept.members.map((m) => m.id)
+    const newUserIds = dto.userIds.filter((id) => !existingMemberIds.includes(id))
+
+    if (newUserIds.length === 0) {
+      throw new BadRequestException('所选用户已全部在该部门中')
+    }
+
+    // 批量关联用户到部门
+    const linkedUsers = await Promise.all(
+      newUserIds.map(async (userId) => {
+        const user = await this.prisma.user.update({
+          where: { id: userId },
+          data: {
+            departments: { connect: { id: dto.departmentId } },
+            ...(dto.isLeader ? { leadingDepartments: { connect: { id: dto.departmentId } } } : {}),
+          },
+          select: {
+            id: true,
+            username: true,
+            disabled: true,
+            createdAt: true,
+            updatedAt: true,
+          },
+        })
+        return { ...user, isLeader: dto.isLeader ?? false }
+      }),
+    )
+
+    return ResultData.ok(linkedUsers)
   }
 
   @Post('remove-member')

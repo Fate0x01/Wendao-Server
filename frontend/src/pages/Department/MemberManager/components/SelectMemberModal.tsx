@@ -1,7 +1,6 @@
 import React, { memo, useEffect, useState } from 'react';
-import { Dialog, Select, MessagePlugin, Loading } from 'tdesign-react';
 import api from 'services';
-import type { DeptMemberEntity } from 'services/generated/model';
+import { Dialog, Loading, MessagePlugin, Select } from 'tdesign-react';
 
 export interface SelectMemberModalProps {
   /** 弹窗可见状态 */
@@ -73,11 +72,12 @@ const SelectMemberModal: React.FC<SelectMemberModalProps> = ({
 
     setSubmitting(true);
     try {
-      // 逐个添加成员（API 暂不支持批量添加）
-      // 注：这里使用已有成员添加的方式，需要后端支持
-      // 当前 API addMember 是创建新用户，如果需要添加已有用户需要后端新增接口
-      // 暂时显示提示信息
-      MessagePlugin.info('添加已有成员功能需要后端支持，请使用"新建账号"方式添加');
+      await api.sysDeptControllerLinkMember({
+        departmentId,
+        userIds: selectedIds,
+      });
+      MessagePlugin.success('添加成员成功');
+      onSuccess();
       handleClose();
     } catch (err) {
       console.error('添加成员失败:', err);
@@ -123,4 +123,3 @@ const SelectMemberModal: React.FC<SelectMemberModalProps> = ({
 };
 
 export default memo(SelectMemberModal);
-

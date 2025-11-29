@@ -10,7 +10,7 @@ export interface UpdateRoleBodyDto {
   /**
    * 角色名称
    * @minLength 2
-   * @maxLength 16
+   * @maxLength 30
    */
   name?: string;
   /** 角色描述 */

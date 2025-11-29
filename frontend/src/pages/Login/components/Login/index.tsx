@@ -106,7 +106,7 @@ export default function Login({ loginConfig }: LoginProps) {
           <>
             {/* 开发环境快捷登录通道 */}
             {import.meta.env?.MODE === 'development' && (
-              <div className='mb-4 p-3 rounded-md border border-dashed border-gray-300 bg-gray-50 dark:bg-gray-800 dark:border-gray-700'>
+              <div className='mb-4 p-3 rounded-md border border-dashed border-gray-300 bg-gray-50 '>
                 <div className='mb-2 text-xs text-gray-500'>开发环境快捷入口</div>
                 <div className='flex gap-2 flex-wrap'>
                   <Button block variant='outline' size='small' onClick={() => handleDevLogin('admin')}>

@@ -1,14 +1,15 @@
-import React, { memo, useState, useCallback, useEffect, useMemo } from 'react';
-import { Button, Dropdown, Input, MessagePlugin, Popconfirm, Table, Tag } from 'tdesign-react';
-import { AddIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
-import type { PrimaryTableCol } from 'tdesign-react/es/table';
-import type { DropdownOption } from 'tdesign-react';
-import { useSearchParams } from 'react-router-dom';
+import Show from 'components/Show';
 import dayjs from 'dayjs';
+import React, { memo, useCallback, useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import api from 'services';
 import type { DeptMemberEntity, DeptTreeEntity } from 'services/generated/model';
-import { useDeptTree } from '../DepartmentManager/hooks/useDeptTree';
+import { AddIcon, RefreshIcon, SearchIcon } from 'tdesign-icons-react';
+import type { DropdownOption } from 'tdesign-react';
+import { Button, Dropdown, Input, MessagePlugin, Popconfirm, Table, Tag } from 'tdesign-react';
+import type { PrimaryTableCol } from 'tdesign-react/es/table';
 import DeptTree from '../DepartmentManager/components/DeptTree';
+import { useDeptTree } from '../DepartmentManager/hooks/useDeptTree';
 import AddMemberModal from './components/AddMemberModal';
 import SelectMemberModal from './components/SelectMemberModal';
 
@@ -198,15 +199,17 @@ const MemberManager: React.FC = () => {
         width: 180,
         cell: ({ row }) => (
           <>
-            {row.isLeader ? (
-              <Button variant='text' theme='primary' onClick={() => handleCancelLeader(row)}>
-                取消负责人
-              </Button>
-            ) : (
-              <Button variant='text' theme='primary' onClick={() => handleSetLeader(row)}>
-                设为负责人
-              </Button>
-            )}
+            <Show permission='dept:setLeaders'>
+              {row.isLeader ? (
+                <Button variant='text' theme='primary' onClick={() => handleCancelLeader(row)}>
+                  取消负责人
+                </Button>
+              ) : (
+                <Button variant='text' theme='primary' onClick={() => handleSetLeader(row)}>
+                  设为负责人
+                </Button>
+              )}
+            </Show>
             <Popconfirm content='确定要将该成员从部门中移除吗？' onConfirm={() => handleRemove(row)}>
               <Button variant='text' theme='danger'>
                 移除

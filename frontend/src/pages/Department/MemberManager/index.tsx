@@ -209,12 +209,12 @@ const MemberManager: React.FC = () => {
                   设为负责人
                 </Button>
               )}
+              <Popconfirm content='确定要将该成员从部门中移除吗？' onConfirm={() => handleRemove(row)}>
+                <Button variant='text' theme='danger'>
+                  移除
+                </Button>
+              </Popconfirm>
             </Show>
-            <Popconfirm content='确定要将该成员从部门中移除吗？' onConfirm={() => handleRemove(row)}>
-              <Button variant='text' theme='danger'>
-                移除
-              </Button>
-            </Popconfirm>
           </>
         ),
       },

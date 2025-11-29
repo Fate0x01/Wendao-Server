@@ -1,7 +1,8 @@
+import Show from 'components/Show';
 import React, { memo, useRef, useState } from 'react';
-import { Dialog, Form, Input, Switch, MessagePlugin } from 'tdesign-react';
-import type { FormInstanceFunctions } from 'tdesign-react';
 import api from 'services';
+import type { FormInstanceFunctions } from 'tdesign-react';
+import { Dialog, Form, Input, MessagePlugin, Switch } from 'tdesign-react';
 
 const { FormItem } = Form;
 
@@ -103,13 +104,14 @@ const AddMemberModal: React.FC<AddMemberModalProps> = ({
           <Input type='password' placeholder='请输入密码' />
         </FormItem>
 
-        <FormItem label='设为负责人' name='isLeader' initialData={false}>
-          <Switch customValue={[true, false]} label={['是', '否']} />
-        </FormItem>
+        <Show permission='dept:setLeaders'>
+          <FormItem label='设为负责人' name='isLeader' initialData={false}>
+            <Switch customValue={[true, false]} label={['是', '否']} />
+          </FormItem>
+        </Show>
       </Form>
     </Dialog>
   );
 };
 
 export default memo(AddMemberModal);
-

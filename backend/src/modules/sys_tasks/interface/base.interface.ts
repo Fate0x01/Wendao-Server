@@ -7,6 +7,7 @@
 
 import { Job } from 'bullmq'
 import { IBaseTaskContext } from './context.interface'
+import { IProgress } from './progress.interface'
 
 export abstract class BaseTask<TData = unknown, TContext extends IBaseTaskContext = IBaseTaskContext> {
   constructor(
@@ -21,13 +22,10 @@ export abstract class BaseTask<TData = unknown, TContext extends IBaseTaskContex
 
   /**
    * 更新任务进度
-   * @param step 进度信息
+   * @param info 进度信息
    */
-  protected async updateProgress(step: string) {
-    this.job.updateProgress({
-      timestamp: Date.now(),
-      step: step,
-    })
+  protected async updateProgress(info: IProgress) {
+    this.job.updateProgress(info)
   }
 
   /**

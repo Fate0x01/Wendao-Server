@@ -29,7 +29,7 @@ import { TaskService } from './sys_tasks.service'
     BullModule.registerQueue({
       name: QUEUE_NAME.Common,
       defaultJobOptions: {
-        removeOnComplete: 3, // 最大保留3个完成任务
+        removeOnComplete: { age: 3600, count: 100 }, // 完成任务保留1小时，最多保留100个
         removeOnFail: 3, // 最大保留3个失败任务
         attempts: 3, // 异常任务最大重试次数
         backoff: {

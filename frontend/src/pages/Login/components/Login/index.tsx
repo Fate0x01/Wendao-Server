@@ -18,6 +18,7 @@ import {
 } from 'tdesign-react';
 import useCountdown from '../../hooks/useCountDown';
 
+import { BaseRole } from 'types/enum';
 import Style from './index.module.less';
 
 const { FormItem } = Form;
@@ -75,16 +76,16 @@ export default function Login({ loginConfig }: LoginProps) {
     changeLoginType(val);
   };
 
-  const handleDevLogin = (type: 'admin' | 'leader' | 'groupMember') => {
+  const handleDevLogin = (type: BaseRole) => {
     let credentials;
     switch (type) {
-      case 'admin':
+      case BaseRole.SUPER_ADMIN:
         credentials = { username: 'admin', password: 'admin123' };
         break;
-      case 'leader':
-        credentials = { username: '刘德华', password: 'a123456' };
+      case BaseRole.NORMAL_ADMIN:
+        credentials = { username: '普通管理员', password: 'a123456' };
         break;
-      case 'groupMember':
+      case BaseRole.DEPARTMENT_LEADER:
         credentials = { username: '一组成员01', password: 'a123456' };
         break;
       default:
@@ -109,14 +110,19 @@ export default function Login({ loginConfig }: LoginProps) {
               <div className='mb-4 p-3 rounded-md border border-dashed border-gray-300 bg-gray-50 '>
                 <div className='mb-2 text-xs text-gray-500'>开发环境快捷入口</div>
                 <div className='flex gap-2 flex-wrap'>
-                  <Button block variant='outline' size='small' onClick={() => handleDevLogin('admin')}>
+                  <Button block variant='outline' size='small' onClick={() => handleDevLogin(BaseRole.SUPER_ADMIN)}>
                     Admin
                   </Button>
-                  <Button block variant='outline' size='small' onClick={() => handleDevLogin('leader')}>
-                    负责人（刘德华）
+                  <Button block variant='outline' size='small' onClick={() => handleDevLogin(BaseRole.NORMAL_ADMIN)}>
+                    普通管理员
                   </Button>
-                  <Button block variant='outline' size='small' onClick={() => handleDevLogin('groupMember')}>
-                    组员（一组成员）
+                  <Button
+                    block
+                    variant='outline'
+                    size='small'
+                    onClick={() => handleDevLogin(BaseRole.DEPARTMENT_LEADER)}
+                  >
+                    部门负责人
                   </Button>
                 </div>
               </div>

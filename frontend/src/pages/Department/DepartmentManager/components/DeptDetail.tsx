@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom';
 import api from 'services';
 import type { DeptDetailEntity, DeptMemberEntity } from 'services/generated/model';
 import { DeleteIcon, EditIcon, UserIcon } from 'tdesign-icons-react';
-import { Button, Descriptions, Divider, Loading, MessagePlugin, Space, Tag } from 'tdesign-react';
+import { Button, Descriptions, Divider, Loading, MessagePlugin, Popconfirm, Space, Tag } from 'tdesign-react';
 
 export interface DeptDetailProps {
   /** 部门 ID */
@@ -104,9 +104,11 @@ const DeptDetail: React.FC<DeptDetailProps> = ({ deptId, onEdit, onDeleted, canE
             </Button>
           </Show>
           <Show permission='dept:delete'>
-            <Button variant='outline' theme='danger' icon={<DeleteIcon />} loading={deleting} onClick={handleDelete}>
-              删除
-            </Button>
+            <Popconfirm content='确定要删除该部门吗？' onConfirm={handleDelete}>
+              <Button variant='outline' theme='danger' icon={<DeleteIcon />} loading={deleting}>
+                删除
+              </Button>
+            </Popconfirm>
           </Show>
         </Space>
       </div>

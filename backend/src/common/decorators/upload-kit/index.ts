@@ -116,94 +116,74 @@ export function GetFile(options: ValidationOptions = {}) {
   )
 }
 
-/**
- * 使用示例
- */
+// =================================================================================
+//  👇 使用示例 (可直接复制到 Controller 中使用)
+// =================================================================================
+/*
+// 引入依赖
+import { Controller, Post, Get, Body } from '@nestjs/common';
+import { ApiTags, ApiOperation } from '@nestjs/swagger';
+import { 
+  UseFileUpload, GetFile, 
+  UseFileDownload, ExcelResult, RawFileResult 
+} from '../../common/decorators/file-upload.kit';
 
-// @ApiTags('文件上传示例')
-// @Controller('examples')
-// export class FileUploadExampleController {
-//   private readonly logger = new Logger(FileUploadExampleController.name);
+@ApiTags('文件处理示例')
+@Controller('examples')
+export class FileExampleController {
 
-//   /**
-//    * 场景 1: 最简单的 Excel 上传
-//    * 需求：只允许上传 Excel，默认大小限制 (10MB)
-//    */
-//   @Post('excel')
-//   @ApiOperation({ summary: '导入Excel报表' })
-//   @UseFileUpload({
-//     description: '请上传月度报表 (.xlsx)',
-//   })
-//   async uploadExcel(
-//     // ✨ 直接用简写 'xlsx'，会自动校验 MIME 类型
-//     @GetFile({ fileType: 'xlsx' }) file: Express.Multer.File,
-//   ) {
-//     this.logger.log(`接收到Excel文件: ${file.originalname}, 大小: ${file.size}`);
-//     // TODO: 调用 Service 解析 Excel
-//     return { filename: file.originalname, status: 'parsing' };
-//   }
+  // ============================================================
+  //  📤 上传场景示例 (Upload Examples)
+  // ============================================================
 
-//   /**
-//    * 场景 2: 上传文件 + 附加参数 (最常用)
-//    * 需求：上传 Excel，同时需要 tenantId 和 remark
-//    */
-//   @Post('excel-with-params')
-//   @ApiOperation({ summary: '带参数的Excel导入' })
-//   @UseFileUpload({
-//     description: '续重计费文件',
-//     // ✨ 在这里定义 Swagger 中的额外字段，不用再写 @ApiBody
-//     extraProperties: {
-//       tenantId: { type: 'string', description: '租户ID', example: 'T001' },
-//       remark: { type: 'string', description: '备注信息', required: false },
-//     },
-//   })
-//   async uploadWithParams(
-//     @GetFile({ fileType: 'excel' }) file: Express.Multer.File, // 'excel' 兼容 .xls 和 .xlsx
-//     @Body('tenantId') tenantId: string, // 获取额外参数
-//     @Body('remark') remark?: string,
-//   ) {
-//     this.logger.log(`租户[${tenantId}] 上传了文件: ${file.originalname}, 备注: ${remark}`);
-//     return { success: true };
-//   }
+  // 场景 1: 简单 Excel 上传
+  // 需求：只允许上传 Excel (.xlsx/.xls)，默认大小限制 (10MB)
+  @Post('upload/excel')
+  @ApiOperation({ summary: '上传 Excel 报表' })
+  @UseFileUpload({ description: '请上传月度报表 (.xlsx/.xls)' })
+  async uploadExcel(
+    // ✨ 使用简写 'excel'，自动兼容 .xlsx 和 .xls，避免正则报错
+    @GetFile({ fileType: 'excel' }) file: Express.Multer.File,
+  ) {
+    console.log(`接收文件: ${file.originalname}`);
+    // return this.excelService.parse(file.buffer);
+    return { status: 'success', filename: file.originalname };
+  }
 
-//   /**
-//    * 场景 3: 图片上传 (严格限制)
-//    * 需求：只允许图片，且限制大小为 2MB
-//    */
-//   @Post('avatar')
-//   @ApiOperation({ summary: '上传用户头像' })
-//   @UseFileUpload({
-//     description: '用户头像 (jpg/png)',
-//   })
-//   async uploadAvatar(
-//     @GetFile({
-//       fileType: 'image', // 使用内置的图片正则
-//       maxSize: 1024 * 1024 * 2, // 限制 2MB
-//     })
-//     file: Express.Multer.File,
-//   ) {
-//     this.logger.log(`更新头像: ${file.originalname}`);
-//     // TODO: 上传到 OSS/S3
-//     return { url: 'https://cdn.example.com/avatar/123.jpg' };
-//   }
+  // 场景 2: 上传文件 + 附加参数 (最常用)
+  // 需求：上传同时需要 tenantId 和 remark，且在 Swagger 中显示
+  @Post('upload/params')
+  @ApiOperation({ summary: '带参数的文件上传' })
+  @UseFileUpload({
+    description: '上传资料',
+    // ✨ 这里的定义会自动合并到 Swagger 文档，无需手写 @ApiBody
+    extraProperties: {
+      tenantId: { type: 'string', description: '租户ID', example: 'T001' },
+      remark: { type: 'string', description: '备注信息', required: false },
+    },
+  })
+  async uploadWithParams(
+    @GetFile() file: Express.Multer.File, // 不传参数默认允许任意类型，限 10MB
+    @Body('tenantId') tenantId: string,   // 获取 Body 参数
+    @Body('remark') remark?: string,
+  ) {
+    console.log(`租户[${tenantId}] 上传了: ${file.originalname}, 备注: ${remark}`);
+    return { id: 'FILE-' + Date.now() };
+  }
 
-//   /**
-//    * 场景 4: 文档上传 (多种格式混合)
-//    * 需求：允许 PDF 或 Word，放宽大小限制到 20MB
-//    */
-//   @Post('document')
-//   @ApiOperation({ summary: '上传合同文档' })
-//   @UseFileUpload({
-//     description: '合同扫描件 (PDF/Word)',
-//   })
-//   async uploadDocument(
-//     @GetFile({
-//       // ✨ 也可以传自定义正则，灵活控制
-//       fileType: /\/(pdf|msword|officedocument)/,
-//       maxSize: 1024 * 1024 * 20, // 20MB
-//     })
-//     file: Express.Multer.File,
-//   ) {
-//     return { id: 'DOC-' + Date.now(), type: file.mimetype };
-//   }
-// }
+  // 场景 3: 图片上传 (严格限制)
+  // 需求：只允许图片，且限制大小为 2MB
+  @Post('upload/avatar')
+  @ApiOperation({ summary: '上传用户头像' })
+  @UseFileUpload({ description: '用户头像 (jpg/png)' })
+  async uploadAvatar(
+    @GetFile({
+      fileType: 'image',        // 使用内置图片正则
+      maxSize: 1024 * 1024 * 2, // 限制 2MB
+    })
+    file: Express.Multer.File,
+  ) {
+    // return this.ossService.upload(file);
+    return { url: 'https://cdn.example.com/avatar/123.jpg' };
+  }
+*/

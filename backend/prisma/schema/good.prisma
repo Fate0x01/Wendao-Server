@@ -1,0 +1,85 @@
+/// 商品信息
+model Goods {
+    id                      String          @id @default(cuid())
+    /// 关联部门
+    departmentId            String
+    department              Department?     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+    departmentName          String // 反范式的冗余字段，用于存储部门名称
+    /// 店铺名称 
+    shopName                String?
+    /// SKU字符串数组
+    sku                     Json
+    /// 货架号
+    shelfNumber             String?
+    /// 产品图片
+    imageUrl                String?
+    /// 入仓条码
+    inboundBarcode          String?
+    /// 产品规格
+    spec                    String?
+    /// 合格证图
+    certificateImageUrl     String?
+    /// 进货成本
+    purchaseCost            Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 最低售价
+    minSalePrice            Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 快递费用
+    expressFee              Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 耗材费
+    materialCost            Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 销售出库费
+    salesOutboundFee        Decimal?        @default(0) @db.Decimal(10, 2)
+    /// TC 到仓费
+    tcToWarehouseFee        Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 人工打包费
+    manualPackingFee        Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 交易服务费比例
+    transactionServiceRatio Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 佣金比例
+    commissionRatio         Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 平台推广比例
+    platformPromotionRatio  Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 货损比例
+    lossRatio               Decimal?        @default(0) @db.Decimal(10, 2)
+    /// 额外成本
+    extraCosts              ExtraCost[]
+    /// 变动日志
+    changeLogs              GoodChangeLog[]
+    createdAt               DateTime        @default(now())
+    updatedAt               DateTime        @updatedAt()
+
+    @@map("system_goods")
+}
+
+/// 额外成本
+model ExtraCost {
+    id          String   @id @default(cuid())
+    /// 关联商品
+    goodId      String
+    good        Goods    @relation(fields: [goodId], references: [id], onDelete: Cascade)
+    /// 金额
+    amount      Decimal  @default(0) @db.Decimal(10, 2)
+    /// 描述
+    description String?
+    createdAt   DateTime @default(now())
+    updatedAt   DateTime @updatedAt()
+
+    @@map("system_goods_extra_cost")
+}
+
+/// 商品信息变动日志
+model GoodChangeLog {
+    id        String   @id @default(cuid())
+    /// 关联商品
+    goodId    String
+    good      Goods    @relation(fields: [goodId], references: [id], onDelete: Cascade)
+    /// 操作人
+    userId    String?
+    username  String // 反范式的冗余字段，用于存储用户名
+    user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+    /// 操作内容
+    content   String
+    createdAt DateTime @default(now())
+
+    @@map("system_goods_change_logs")
+}

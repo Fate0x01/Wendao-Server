@@ -23,6 +23,8 @@ model Department {
     createdById String?
     /// 创建人
     createdBy   User?        @relation("DeptCreator", fields: [createdById], references: [id])
+    /// 关联商品信息
+    goods       Goods[]
 
     @@map("system_departments")
 }

@@ -27,8 +27,8 @@ export default memo(() => {
       {/* <LoginHeader /> */}
       <div className={Style.loginContainer}>
         <div className={Style.titleContainer}>
-          <h1 className={Style.title}>登录到</h1>
-          <h1 className={Style.title}>TDesign Starter</h1>
+          <h1 className={Style.title}>登录</h1>
+          <h1 className={Style.title}>问道仓储管理系统</h1>
           {enableRegister && (
             <div className={Style.subTitle}>
               <p className={classNames(Style.tip, Style.registerTip)}>{isRegister ? '已有账号?' : '没有账号吗?'}</p>

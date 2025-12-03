@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import { memo } from 'react';
 import { Button } from 'tdesign-react';
 
 import BrowserIncompatibleIcon from 'assets/svg/assets-result-browser-incompatible.svg?component';
@@ -13,7 +13,7 @@ const BrowserIncompatible = () => (
     <div className={style.resultSlotContainer}>
       <Button className={style.rightButton}>返回首页</Button>
       <div className={style.recommendContainer}>
-        <div>TDesign Starter 推荐以下主流浏览器</div>
+        <div>问道仓储管理系统 推荐以下主流浏览器</div>
         <div className={style.recommendBrowser}>
           <div>
             <img src='https://tdesign.gtimg.com/starter/result-page/chorme.png' alt='Chrome' />

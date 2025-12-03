@@ -3,10 +3,10 @@ import { useAppSelector } from 'modules/store';
 import { memo, useMemo, useState } from 'react';
 import { useLocation, useNavigate, type NavigateFunction } from 'react-router-dom';
 import router, { IRouter } from 'router';
+import { useAuthStore } from 'stores/auth';
 import { Menu, MenuValue } from 'tdesign-react';
 import { resolve } from 'utils/path';
 import { canAccessByMeta } from 'utils/permission';
-import { useAuthStore } from 'stores/auth';
 import Style from './Menu.module.less';
 import MenuLogo from './MenuLogo';
 
@@ -117,7 +117,7 @@ export default memo((props: IMenuProps) => {
   const navigate = useNavigate();
 
   const { version } = globalState;
-  const bottomText = globalState.collapsed ? version : `TDesign Starter ${version}`;
+  const bottomText = globalState.collapsed ? version : `问道仓储管理系统 ${version}`;
 
   return (
     <Menu

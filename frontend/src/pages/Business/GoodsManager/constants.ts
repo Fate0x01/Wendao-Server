@@ -93,9 +93,9 @@ const formatRatio = (ratio: number | null | undefined, minSalePrice: number | nu
 };
 
 /**
- * 表格列配置（不含操作列）
+ * 基础列配置（始终显示）
  */
-export const TABLE_COLUMNS: PrimaryTableCol<GoodsEntity>[] = [
+export const BASE_COLUMNS: PrimaryTableCol<GoodsEntity>[] = [
   {
     title: '部门',
     colKey: 'departmentName',
@@ -166,6 +166,12 @@ export const TABLE_COLUMNS: PrimaryTableCol<GoodsEntity>[] = [
     align: 'right',
     // 自定义渲染在页面中实现（需要 JSX 支持颜色区分）
   },
+];
+
+/**
+ * 费用明细列配置（可折叠，默认收起）
+ */
+export const COST_DETAIL_COLUMNS: PrimaryTableCol<GoodsEntity>[] = [
   {
     title: '快递费用',
     colKey: 'expressFee',

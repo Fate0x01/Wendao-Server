@@ -6,7 +6,13 @@ import DeptTreeSelect, { useDeptTree } from 'components/DeptTreeSelect';
 import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import api from 'services';
 import type { GoodsEntity, GoodsImportResultEntity, GoodsQueryDto, UpdateGoodsDto } from 'services/generated/model';
-import { DownloadIcon, UploadIcon, WalletIcon } from 'tdesign-icons-react';
+import {
+  ChevronLeftDoubleIcon,
+  ChevronRightDoubleIcon,
+  DownloadIcon,
+  UploadIcon,
+  WalletIcon,
+} from 'tdesign-icons-react';
 import {
   Button,
   Card,
@@ -26,7 +32,7 @@ import type { PrimaryTableCol } from 'tdesign-react/es/table';
 import ExtraCostModal from './components/ExtraCostModal';
 import GoodsFormFields from './components/GoodsFormFields';
 import ImportResultModal from './components/ImportResultModal';
-import { calcProfit, DEFAULT_PAGE_SIZE, TABLE_COLUMNS } from './constants';
+import { BASE_COLUMNS, calcProfit, COST_DETAIL_COLUMNS, DEFAULT_PAGE_SIZE } from './constants';
 
 /**
  * SKU 展示组件
@@ -122,6 +128,9 @@ const GoodsManager: React.FC = () => {
   const [importResultVisible, setImportResultVisible] = useState(false);
   const [importResult, setImportResult] = useState<GoodsImportResultEntity | null>(null);
   const [importLoading, setImportLoading] = useState(false);
+
+  // 费用明细列展开状态
+  const [showCostDetails, setShowCostDetails] = useState(false);
 
   // 默认筛选条件（普通成员自动注入部门ID）
   const defaultFilters = useMemo(() => {
@@ -276,9 +285,20 @@ const GoodsManager: React.FC = () => {
     handleReset();
   }, [handleReset]);
 
+  // 切换费用明细列显示
+  const handleToggleCostDetails = useCallback(() => {
+    setShowCostDetails((prev) => !prev);
+  }, []);
+
   // 工具栏额外按钮
   const toolbarExtraActions = useMemo<ToolbarActionConfig[]>(
     () => [
+      {
+        key: 'toggleCostDetails',
+        label: showCostDetails ? '收起费用明细' : '展开费用明细',
+        icon: showCostDetails ? <ChevronLeftDoubleIcon /> : <ChevronRightDoubleIcon />,
+        onClick: handleToggleCostDetails,
+      },
       {
         key: 'download',
         label: '下载模板',
@@ -293,72 +313,73 @@ const GoodsManager: React.FC = () => {
         disabled: importLoading,
       },
     ],
-    [handleDownloadTemplate, handleImport, importLoading],
+    [showCostDetails, handleToggleCostDetails, handleDownloadTemplate, handleImport, importLoading],
   );
 
-  // 构建表格列配置（添加自定义渲染）
+  // 为列添加自定义渲染逻辑
+  const applyCustomRenderers = useCallback((col: PrimaryTableCol<GoodsEntity>): PrimaryTableCol<GoodsEntity> => {
+    if (col.colKey === 'sku') {
+      return { ...col, cell: ({ row }: { row: GoodsEntity }) => <SkuCell skus={row.sku} /> };
+    }
+    if (col.colKey === 'imageUrl') {
+      return { ...col, cell: ({ row }: { row: GoodsEntity }) => <ImageCell url={row.imageUrl} /> };
+    }
+    if (col.colKey === 'certificateImageUrl') {
+      return { ...col, cell: ({ row }: { row: GoodsEntity }) => <ImageCell url={row.certificateImageUrl} /> };
+    }
+    if (col.colKey === 'profit') {
+      return {
+        ...col,
+        cell: ({ row }: { row: GoodsEntity }) => {
+          const profit = calcProfit(row);
+          if (profit == null) return '-';
+          const color = profit >= 0 ? 'text-green-600' : 'text-red-600';
+          return <span className={color}>¥{profit.toFixed(2)}</span>;
+        },
+      };
+    }
+    return col;
+  }, []);
+
+  // 构建表格列配置
   const columns = useMemo<PrimaryTableCol<GoodsEntity>[]>(() => {
-    return TABLE_COLUMNS.map((col) => {
-      if (col.colKey === 'sku') {
-        return {
-          ...col,
-          cell: ({ row }: { row: GoodsEntity }) => <SkuCell skus={row.sku} />,
-        };
-      }
-      if (col.colKey === 'imageUrl') {
-        return {
-          ...col,
-          cell: ({ row }: { row: GoodsEntity }) => <ImageCell url={row.imageUrl} />,
-        };
-      }
-      if (col.colKey === 'certificateImageUrl') {
-        return {
-          ...col,
-          cell: ({ row }: { row: GoodsEntity }) => <ImageCell url={row.certificateImageUrl} />,
-        };
-      }
-      if (col.colKey === 'profit') {
-        return {
-          ...col,
-          cell: ({ row }: { row: GoodsEntity }) => {
-            const profit = calcProfit(row);
-            if (profit == null) return '-';
-            const color = profit >= 0 ? 'text-green-600' : 'text-red-600';
-            return <span className={color}>¥{profit.toFixed(2)}</span>;
-          },
-        };
-      }
-      return col;
-    }).concat([
-      {
-        title: '操作',
-        colKey: 'operation',
-        fixed: 'right',
-        width: 180,
-        cell: ({ row }: { row: GoodsEntity }) => (
-          <div className='flex gap-1'>
-            <Button variant='text' theme='primary' size='small' onClick={() => openEdit(row)}>
-              编辑
+    // 基础列
+    const baseCols = BASE_COLUMNS.map(applyCustomRenderers);
+
+    // 费用明细列（根据状态决定是否显示）
+    const costDetailCols = showCostDetails ? COST_DETAIL_COLUMNS.map(applyCustomRenderers) : [];
+
+    // 操作列
+    const operationCol: PrimaryTableCol<GoodsEntity> = {
+      title: '操作',
+      colKey: 'operation',
+      fixed: 'right',
+      width: 180,
+      cell: ({ row }: { row: GoodsEntity }) => (
+        <div className='flex gap-1'>
+          <Button variant='text' theme='primary' size='small' onClick={() => openEdit(row)}>
+            编辑
+          </Button>
+          <Button
+            variant='text'
+            theme='primary'
+            size='small'
+            icon={<WalletIcon />}
+            onClick={() => handleOpenExtraCost(row)}
+          >
+            额外成本
+          </Button>
+          <Popconfirm content='确定删除该商品？' onConfirm={() => handleDelete(row)}>
+            <Button variant='text' theme='danger' size='small'>
+              删除
             </Button>
-            <Button
-              variant='text'
-              theme='primary'
-              size='small'
-              icon={<WalletIcon />}
-              onClick={() => handleOpenExtraCost(row)}
-            >
-              额外成本
-            </Button>
-            <Popconfirm content='确定删除该商品？' onConfirm={() => handleDelete(row)}>
-              <Button variant='text' theme='danger' size='small'>
-                删除
-              </Button>
-            </Popconfirm>
-          </div>
-        ),
-      },
-    ]);
-  }, [openEdit, handleOpenExtraCost, handleDelete]);
+          </Popconfirm>
+        </div>
+      ),
+    };
+
+    return [...baseCols, ...costDetailCols, operationCol];
+  }, [showCostDetails, applyCustomRenderers, openEdit, handleOpenExtraCost, handleDelete]);
 
   return (
     <div className='flex min-h-full flex-col gap-4'>

@@ -96,13 +96,8 @@ export default function Login({ loginConfig }: LoginProps) {
   };
 
   return (
-    <div>
-      <Form
-        ref={formRef}
-        className={classnames(Style.itemContainer, `login-${loginType}`)}
-        labelWidth={0}
-        onSubmit={onSubmit}
-      >
+    <div className={Style.itemContainer}>
+      <Form ref={formRef} className={classnames(`login-${loginType}`)} labelWidth={0} onSubmit={onSubmit}>
         {loginType === 'password' && (
           <>
             {/* 开发环境快捷登录通道 */}

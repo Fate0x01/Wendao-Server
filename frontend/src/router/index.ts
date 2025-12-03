@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { DashboardIcon, SettingIcon, UsergroupIcon } from 'tdesign-icons-react';
+import { DashboardIcon, SettingIcon, StoreIcon, UsergroupIcon } from 'tdesign-icons-react';
 import { BaseRole } from 'types/enum';
 import IRouter from './interface/route';
 import otherRoutes from './modules/others';
@@ -78,6 +78,24 @@ const routes: IRouter[] = [
         Component: lazy(() => import('pages/Department/MemberManager')),
         meta: {
           title: '成员管理',
+        },
+      },
+    ],
+  },
+  {
+    path: '/business',
+    meta: {
+      title: '业务管理',
+      Icon: StoreIcon,
+      allowRole: ['SUPER_ADMIN'],
+      allowPermission: ['goods:list'],
+    },
+    children: [
+      {
+        path: 'goods',
+        Component: lazy(() => import('pages/Business/GoodsManager')),
+        meta: {
+          title: '商品管理',
         },
       },
     ],

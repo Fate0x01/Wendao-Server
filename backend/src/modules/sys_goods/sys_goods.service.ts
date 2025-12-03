@@ -373,7 +373,7 @@ export class SysGoodsService {
    * @param str SKU字符串
    * @returns SKU数组
    */
-  async trimSkuString(str: String) {
+  trimSkuString(str: String) {
     return String(str)
       .trim()
       .split(/[\s\n]+/)

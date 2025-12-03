@@ -20,6 +20,11 @@ export class ChangeLogQueryDto {
   @IsString({ message: '商品ID必须为字符串' })
   goodId?: string
 
+  @ApiPropertyOptional({ description: '部门ID', type: String })
+  @IsOptional()
+  @IsString({ message: '部门ID必须为字符串' })
+  departmentId?: string
+
   @ApiPropertyOptional({ description: '操作人ID', type: String })
   @IsOptional()
   @IsString({ message: '操作人ID必须为字符串' })
@@ -40,4 +45,3 @@ export class ChangeLogQueryDto {
   @IsDateString({}, { message: '结束时间必须为有效的日期字符串' })
   endTime?: string
 }
-

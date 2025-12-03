@@ -66,7 +66,7 @@ export class SysGoodsController {
   @Post('change-logs')
   @ApiOperation({ summary: '查询商品变动日志列表' })
   @ApiResult(ChangeLogEntity, true, true)
-  @Permission({ group: '商品管理', name: '商品变动日志', model: 'Goods', code: 'goods:change-logs' })
+  @Permission({ group: '商品管理', name: '商品变动日志', model: 'GoodChangeLog', code: 'goods:change-logs' })
   async getChangeLogs(@Body() query: ChangeLogQueryDto) {
     const { rows, total } = await this.sysGoodsService.getChangeLogs(query)
     return ResultData.list(rows, total)

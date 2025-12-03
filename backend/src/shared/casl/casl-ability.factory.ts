@@ -182,6 +182,7 @@ function handleGoodChangeLogAbility(builder: AbilityBuilder<AppAbility>, user: R
   const memberDeptIds = user.departments?.map((d) => d.id) ?? []
   const leadingLevel1DeptIds: string[] = []
   const leadingLevel2DeptIds: string[] = []
+  console.log(leadingDepts, memberDeptIds)
 
   for (const dept of leadingDepts) {
     if (dept.parentId === null) {

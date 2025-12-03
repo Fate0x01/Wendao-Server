@@ -279,6 +279,7 @@ export class SysGoodsService {
             goodId: query.goodId || undefined,
             userId: query.userId || undefined,
             username: query.username ? { contains: query.username } : undefined,
+            good: { departmentId: query.departmentId || undefined },
             ...(query.startTime || query.endTime
               ? {
                   createdAt: {

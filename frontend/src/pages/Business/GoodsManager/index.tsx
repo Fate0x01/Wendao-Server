@@ -2,6 +2,7 @@ import { fileOpen } from 'browser-fs-access';
 import { CrudFormModal, CrudToolbar } from 'components/CrudKit';
 import { useCrudModal, useCrudTable } from 'components/CrudKit/hooks';
 import type { ToolbarActionConfig } from 'components/CrudKit/types';
+import DeptTreeSelect, { useDeptTree } from 'components/DeptTreeSelect';
 import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import api from 'services';
 import type { GoodsEntity, GoodsImportResultEntity, GoodsQueryDto, UpdateGoodsDto } from 'services/generated/model';
@@ -19,7 +20,6 @@ import {
   Row,
   Table,
   Tag,
-  TreeSelect,
 } from 'tdesign-react';
 import type { FormInstanceFunctions } from 'tdesign-react/es/form/type';
 import type { PrimaryTableCol } from 'tdesign-react/es/table';
@@ -27,7 +27,6 @@ import ExtraCostModal from './components/ExtraCostModal';
 import GoodsFormFields from './components/GoodsFormFields';
 import ImportResultModal from './components/ImportResultModal';
 import { calcProfit, DEFAULT_PAGE_SIZE, TABLE_COLUMNS } from './constants';
-import { useDeptFilter } from './hooks/useDeptFilter';
 
 /**
  * SKU 展示组件
@@ -110,7 +109,7 @@ const { FormItem } = Form;
  */
 const GoodsManager: React.FC = () => {
   // 部门筛选权限
-  const { isLeader, deptTreeData, userDeptId, loading: deptLoading } = useDeptFilter();
+  const { isLeader, deptTreeData, userDeptId, loading: deptLoading } = useDeptTree();
 
   // 搜索表单引用
   const searchFormRef = useRef<FormInstanceFunctions>(null);
@@ -369,17 +368,11 @@ const GoodsManager: React.FC = () => {
           <Row>
             <Col flex='1'>
               <Row gutter={[16, 16]}>
-                {/* 部门筛选（负责人可见，使用 TreeSelect 支持一二级选择） */}
+                {/* 部门筛选（负责人可见，使用 DeptTreeSelect） */}
                 {isLeader && (
                   <Col span={3} xs={12} sm={6} xl={3}>
                     <FormItem label='部门' name='departmentId'>
-                      <TreeSelect
-                        data={deptTreeData}
-                        placeholder='请选择部门'
-                        clearable
-                        filterable
-                        treeProps={{ checkStrictly: true }}
-                      />
+                      <DeptTreeSelect deptTreeData={deptTreeData} treeProps={{ checkStrictly: true }} />
                     </FormItem>
                   </Col>
                 )}

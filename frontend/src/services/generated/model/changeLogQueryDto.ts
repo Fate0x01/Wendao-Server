@@ -13,6 +13,8 @@ export interface ChangeLogQueryDto {
   pageSize: number;
   /** 商品ID */
   goodId?: string;
+  /** 部门ID */
+  departmentId?: string;
   /** 操作人ID */
   userId?: string;
   /** 操作人用户名关键词 */

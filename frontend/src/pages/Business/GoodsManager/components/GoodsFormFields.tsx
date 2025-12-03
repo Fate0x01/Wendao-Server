@@ -1,6 +1,6 @@
+import DeptTreeSelect, { type DeptTreeNode } from 'components/DeptTreeSelect';
 import React, { memo } from 'react';
-import { Divider, Form, Input, InputNumber, TagInput, TreeSelect } from 'tdesign-react';
-import type { DeptTreeNode } from '../hooks/useDeptFilter';
+import { Divider, Form, Input, InputNumber, TagInput } from 'tdesign-react';
 
 const { FormItem } = Form;
 
@@ -21,7 +21,7 @@ const GoodsFormFields: React.FC<GoodsFormFieldsProps> = ({ deptTreeData, isEdit 
       {/* 基本信息 */}
       <Divider align='left'>基本信息</Divider>
       <FormItem label='所属部门' name='departmentId' rules={[{ required: true, message: '请选择部门' }]}>
-        <TreeSelect data={deptTreeData} placeholder='请选择部门' clearable filterable disabled={isEdit} />
+        <DeptTreeSelect deptTreeData={deptTreeData} disabled={isEdit} />
       </FormItem>
       <FormItem label='店铺名称' name='shopName'>
         <Input placeholder='请输入店铺名称' />

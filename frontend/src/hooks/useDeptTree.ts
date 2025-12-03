@@ -17,7 +17,7 @@ export interface DeptTreeNode {
   children?: DeptTreeNode[];
 }
 
-export interface UseDeptFilterReturn {
+export interface UseDeptTreeReturn {
   /** 用户角色 */
   role: DeptRole;
   /** 是否为负责人（一级或二级） */
@@ -64,10 +64,10 @@ const findDeptLevel = (nodes: DeptTreeEntity[], deptId: string, level = 1): numb
 };
 
 /**
- * 部门筛选权限控制 Hook
- * 根据用户角色控制部门筛选的展示和默认值
+ * 部门树 Hook
+ * 获取部门树数据，并根据用户角色控制部门筛选的展示和默认值
  */
-export const useDeptFilter = (): UseDeptFilterReturn => {
+export const useDeptTree = (): UseDeptTreeReturn => {
   const [treeData, setTreeData] = useState<DeptTreeEntity[]>([]);
   const [loading, setLoading] = useState(false);
   const userProfile = useUserInfo();
@@ -93,9 +93,8 @@ export const useDeptFilter = (): UseDeptFilterReturn => {
   const deptTreeData = useMemo(() => transformToTreeSelectData(treeData), [treeData]);
 
   // 用户所属部门ID（从 userProfile 获取，这里简化处理）
-  // 实际项目中需要从用户信息中获取部门ID
   const userDeptId = useMemo(() => {
-    // TODO: 从用户信息中获取部门ID，这里先返回 null
+    // TODO: 从用户信息中获取部门ID
     return null;
   }, [userProfile]);
 
@@ -124,4 +123,4 @@ export const useDeptFilter = (): UseDeptFilterReturn => {
   };
 };
 
-export default useDeptFilter;
+export default useDeptTree;

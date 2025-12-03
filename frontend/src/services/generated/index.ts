@@ -6,11 +6,14 @@
  * OpenAPI spec version: 1.0
  */
 import type {
+  AddExtraCostDto,
   AddMemberDto,
+  ChangeLogQueryDto,
   CreateDeptDto,
   CreateRoleDto,
   CreateUserDto,
   DeptQueryDto,
+  GoodsQueryDto,
   LinkMemberDto,
   LoginDto,
   MembersQueryDto,
@@ -33,6 +36,14 @@ import type {
   SysDeptControllerRemoveMember200,
   SysDeptControllerSetLeaders200,
   SysDeptControllerUpdateDept200,
+  SysGoodsControllerAddExtraCost200,
+  SysGoodsControllerDeleteExtraCost200,
+  SysGoodsControllerDeleteGoods200,
+  SysGoodsControllerGetChangeLogs200,
+  SysGoodsControllerGetGoodsList200,
+  SysGoodsControllerImportGoods200,
+  SysGoodsControllerImportGoodsBody,
+  SysGoodsControllerUpdateGoods200,
   SysRoleControllerCreateRole200,
   SysRoleControllerDeleteRole200,
   SysRoleControllerGetPermissions200,
@@ -45,6 +56,7 @@ import type {
   SysUserControllerGetUsers200,
   SysUserControllerUpdateUser200,
   UpdateDeptDto,
+  UpdateGoodsDto,
   UpdateRoleBodyDto,
   UpdateUserBodyDto,
   UserQueryDto
@@ -401,7 +413,103 @@ const sysDeptControllerSetLeaders = (
       options);
     }
   
-return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders}};
+/**
+ * @summary 导入商品
+ */
+const sysGoodsControllerImportGoods = (
+    sysGoodsControllerImportGoodsBody: SysGoodsControllerImportGoodsBody,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerImportGoods200>>,) => {const formData = new FormData();
+formData.append(`file`, sysGoodsControllerImportGoodsBody.file)
+
+      return customInstance<SysGoodsControllerImportGoods200>(
+      {url: `/sys-goods/import`, method: 'POST',
+      headers: {'Content-Type': 'multipart/form-data', },
+       data: formData
+    },
+      options);
+    }
+  
+/**
+ * @summary 查询商品列表
+ */
+const sysGoodsControllerGetGoodsList = (
+    goodsQueryDto: GoodsQueryDto,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerGetGoodsList200>>,) => {
+      return customInstance<SysGoodsControllerGetGoodsList200>(
+      {url: `/sys-goods/list`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: goodsQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 修改商品
+ */
+const sysGoodsControllerUpdateGoods = (
+    updateGoodsDto: UpdateGoodsDto,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerUpdateGoods200>>,) => {
+      return customInstance<SysGoodsControllerUpdateGoods200>(
+      {url: `/sys-goods/update`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: updateGoodsDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 删除商品
+ */
+const sysGoodsControllerDeleteGoods = (
+    id: string,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerDeleteGoods200>>,) => {
+      return customInstance<SysGoodsControllerDeleteGoods200>(
+      {url: `/sys-goods/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+/**
+ * @summary 查询商品变动日志列表
+ */
+const sysGoodsControllerGetChangeLogs = (
+    changeLogQueryDto: ChangeLogQueryDto,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerGetChangeLogs200>>,) => {
+      return customInstance<SysGoodsControllerGetChangeLogs200>(
+      {url: `/sys-goods/change-logs`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: changeLogQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 添加指定商品额外成本
+ */
+const sysGoodsControllerAddExtraCost = (
+    addExtraCostDto: AddExtraCostDto,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerAddExtraCost200>>,) => {
+      return customInstance<SysGoodsControllerAddExtraCost200>(
+      {url: `/sys-goods/add-extra-cost`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: addExtraCostDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 删除指定商品的指定额外成本
+ */
+const sysGoodsControllerDeleteExtraCost = (
+    id: string,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerDeleteExtraCost200>>,) => {
+      return customInstance<SysGoodsControllerDeleteExtraCost200>(
+      {url: `/sys-goods/extra-cost/${id}`, method: 'DELETE'
+    },
+      options);
+    }
+  
+return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost}};
 export type SysAuthControllerLoginResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerLogin']>>>
 export type SysAuthControllerRefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerRefresh']>>>
 export type SysAuthControllerGetUserInfoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerGetUserInfo']>>>
@@ -428,3 +536,10 @@ export type SysDeptControllerAddMemberResult = NonNullable<Awaited<ReturnType<Re
 export type SysDeptControllerLinkMemberResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerLinkMember']>>>
 export type SysDeptControllerRemoveMemberResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerRemoveMember']>>>
 export type SysDeptControllerSetLeadersResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysDeptControllerSetLeaders']>>>
+export type SysGoodsControllerImportGoodsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerImportGoods']>>>
+export type SysGoodsControllerGetGoodsListResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerGetGoodsList']>>>
+export type SysGoodsControllerUpdateGoodsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerUpdateGoods']>>>
+export type SysGoodsControllerDeleteGoodsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerDeleteGoods']>>>
+export type SysGoodsControllerGetChangeLogsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerGetChangeLogs']>>>
+export type SysGoodsControllerAddExtraCostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerAddExtraCost']>>>
+export type SysGoodsControllerDeleteExtraCostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerDeleteExtraCost']>>>

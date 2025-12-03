@@ -28,6 +28,12 @@ export default function defineAbilityFor(user: ReqUser) {
       case 'Department':
         handleDepartmentAbility(abilityBuilder, user)
         break
+      case 'Goods':
+        handleGoodsAbility(abilityBuilder, user)
+        break
+      case 'GoodChangeLog':
+        handleGoodChangeLogAbility(abilityBuilder, user)
+        break
       default:
         break
     }
@@ -118,5 +124,86 @@ function handleDepartmentAbility(builder: AbilityBuilder<AppAbility>, user: ReqU
   // 部门成员：仅读取本部门
   if (memberDeptIds.length > 0) {
     builder.can(Actions.Read, 'Department', { id: { in: memberDeptIds } })
+  }
+}
+
+/**
+ * 处理商品权限
+ * 权限规则：
+ * - 一级部门负责人：管理本一级部门及其所有子部门的商品
+ * - 二级部门负责人：仅管理本二级部门的商品
+ * - 二级部门成员：仅读取本二级部门的商品
+ * @param builder
+ * @param user
+ */
+function handleGoodsAbility(builder: AbilityBuilder<AppAbility>, user: ReqUser) {
+  // 获取用户负责的部门列表（包含层级信息）
+  const leadingDepts = user.leadingDepartments ?? []
+  // 获取用户所属的部门 ID 列表
+  const memberDeptIds = user.departments?.map((d) => d.id) ?? []
+  // 分离一级部门负责和二级部门负责
+  const leadingLevel1DeptIds: string[] = []
+  const leadingLevel2DeptIds: string[] = []
+
+  for (const dept of leadingDepts) {
+    if (dept.parentId === null) {
+      leadingLevel1DeptIds.push(dept.id) // 一级部门
+    } else {
+      leadingLevel2DeptIds.push(dept.id) // 二级部门
+    }
+  }
+
+  // 一级部门负责人：可以管理本一级部门及其所有子部门的商品
+  if (leadingLevel1DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'Goods', { departmentId: { in: leadingLevel1DeptIds } })
+    // 一级部门下属二级部门的商品
+    builder.can(Actions.Manage, 'Goods', { department: { parentId: { in: leadingLevel1DeptIds } } })
+  }
+
+  // 二级部门负责人：仅管理本二级部门的商品
+  if (leadingLevel2DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'Goods', { departmentId: { in: leadingLevel2DeptIds } })
+  }
+
+  // 部门成员：仅读取本部门的商品
+  if (memberDeptIds.length > 0) {
+    builder.can(Actions.Manage, 'Goods', { departmentId: { in: memberDeptIds } })
+  }
+}
+
+/**
+ * 处理商品变动日志权限
+ * 权限规则：跟随商品权限
+ * @param builder
+ * @param user
+ */
+function handleGoodChangeLogAbility(builder: AbilityBuilder<AppAbility>, user: ReqUser) {
+  const leadingDepts = user.leadingDepartments ?? []
+  const memberDeptIds = user.departments?.map((d) => d.id) ?? []
+  const leadingLevel1DeptIds: string[] = []
+  const leadingLevel2DeptIds: string[] = []
+
+  for (const dept of leadingDepts) {
+    if (dept.parentId === null) {
+      leadingLevel1DeptIds.push(dept.id)
+    } else {
+      leadingLevel2DeptIds.push(dept.id)
+    }
+  }
+
+  // 一级部门负责人
+  if (leadingLevel1DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'GoodChangeLog', { good: { departmentId: { in: leadingLevel1DeptIds } } })
+    builder.can(Actions.Manage, 'GoodChangeLog', { good: { department: { parentId: { in: leadingLevel1DeptIds } } } })
+  }
+
+  // 二级部门负责人
+  if (leadingLevel2DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'GoodChangeLog', { good: { departmentId: { in: leadingLevel2DeptIds } } })
+  }
+
+  // 部门成员
+  if (memberDeptIds.length > 0) {
+    builder.can(Actions.Manage, 'GoodChangeLog', { good: { departmentId: { in: memberDeptIds } } })
   }
 }

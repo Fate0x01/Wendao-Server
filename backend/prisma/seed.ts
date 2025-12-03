@@ -47,24 +47,9 @@ async function main() {
   })
 
   // 创建超管账号
-  const adminPassword = await bcrypt.hash('admin123', 10)
-  const adminUser = await prisma.user.upsert({
-    where: { username: 'admin' },
-    update: {},
-    create: {
-      username: 'admin',
-      password: adminPassword,
-      disabled: false,
-      roles: {
-        connect: { id: superAdminRole.id },
-      },
-    },
-  })
-
-  console.log('✅ 测试数据填充完成')
-  console.log('📝 系统角色:')
-  console.log(`   - ${superAdminRole.name} (${superAdminRole.desc})`)
-  console.log(`   - ${normalUserRole.name} (${normalUserRole.desc})`)
+  await prisma.user.upsert({ where: { username: 'admin' }, update: {}, create: { username: '刘一缘', password: await bcrypt.hash('aa123456..', 10), disabled: false, roles: { connect: { id: superAdminRole.id } } } }) // 开发者账号
+  await prisma.user.upsert({ where: { username: 'admin' }, update: {}, create: { username: '问道总001', password: await bcrypt.hash('zz079088', 10), disabled: false, roles: { connect: { id: superAdminRole.id } } } }) // 问道账号
+  console.log('初始数据填充完成')
 }
 
 main()

@@ -89,6 +89,16 @@ export const calcProfit = (row: GoodsEntity): number | null => {
 };
 
 /**
+ * 计算净毛利百分比
+ * 净毛利百分比 = (利润 / 最低售价) * 100
+ */
+export const calcNetProfitMargin = (row: GoodsEntity): number | null => {
+  const profit = calcProfit(row);
+  if (profit == null || row.minSalePrice == null || row.minSalePrice === 0) return null;
+  return (profit / row.minSalePrice) * 100;
+};
+
+/**
  * 格式化比例显示：原始比例% + 计算金额
  * 如：1% 0.45
  */
@@ -176,6 +186,13 @@ export const BASE_COLUMNS: PrimaryTableCol<GoodsEntity>[] = [
   {
     title: '利润',
     colKey: 'profit',
+    width: 100,
+    align: 'right',
+    // 自定义渲染在页面中实现（需要 JSX 支持颜色区分）
+  },
+  {
+    title: '净毛利',
+    colKey: 'netProfitMargin',
     width: 100,
     align: 'right',
     // 自定义渲染在页面中实现（需要 JSX 支持颜色区分）

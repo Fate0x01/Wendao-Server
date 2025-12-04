@@ -32,7 +32,7 @@ import type { PrimaryTableCol } from 'tdesign-react/es/table';
 import ExtraCostModal from './components/ExtraCostModal';
 import GoodsFormFields from './components/GoodsFormFields';
 import ImportResultModal from './components/ImportResultModal';
-import { BASE_COLUMNS, calcProfit, COST_DETAIL_COLUMNS, DEFAULT_PAGE_SIZE } from './constants';
+import { BASE_COLUMNS, calcNetProfitMargin, calcProfit, COST_DETAIL_COLUMNS, DEFAULT_PAGE_SIZE } from './constants';
 
 /**
  * SKU 展示组件
@@ -335,6 +335,17 @@ const GoodsManager: React.FC = () => {
           if (profit == null) return '-';
           const color = profit >= 0 ? 'text-green-600' : 'text-red-600';
           return <span className={color}>¥{profit.toFixed(2)}</span>;
+        },
+      };
+    }
+    if (col.colKey === 'netProfitMargin') {
+      return {
+        ...col,
+        cell: ({ row }: { row: GoodsEntity }) => {
+          const margin = calcNetProfitMargin(row);
+          if (margin == null) return '-';
+          const color = margin >= 0 ? 'text-green-600' : 'text-red-600';
+          return <span className={color}>{margin.toFixed(2)}%</span>;
         },
       };
     }

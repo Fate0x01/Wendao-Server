@@ -23,6 +23,11 @@ export class UpdateGoodsDto {
   @IsArray({ message: 'SKU必须为数组' })
   sku?: string[]
 
+  @ApiPropertyOptional({ description: '负责人', type: String })
+  @IsOptional()
+  @IsString({ message: '负责人必须为字符串' })
+  responsiblePerson?: string
+
   @ApiPropertyOptional({ description: '货架号', type: String })
   @IsOptional()
   @IsString({ message: '货架号必须为字符串' })

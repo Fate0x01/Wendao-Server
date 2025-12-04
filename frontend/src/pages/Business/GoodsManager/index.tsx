@@ -408,6 +408,11 @@ const GoodsManager: React.FC = () => {
                   </FormItem>
                 </Col>
                 <Col span={3} xs={12} sm={6} xl={3}>
+                  <FormItem label='负责人' name='responsiblePerson'>
+                    <Input placeholder='请输入负责人' />
+                  </FormItem>
+                </Col>
+                <Col span={3} xs={12} sm={6} xl={3}>
                   <FormItem label='货架号' name='shelfNumber'>
                     <Input placeholder='请输入货架号' />
                   </FormItem>

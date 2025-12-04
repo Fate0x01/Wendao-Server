@@ -39,5 +39,10 @@ export class GoodsQueryDto {
   @IsOptional()
   @IsString({ message: '入仓条码必须为字符串' })
   inboundBarcode?: string
+
+  @ApiPropertyOptional({ description: '负责人', type: String })
+  @IsOptional()
+  @IsString({ message: '负责人必须为字符串' })
+  responsiblePerson?: string
 }
 

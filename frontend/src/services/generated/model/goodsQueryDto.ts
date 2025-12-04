@@ -21,4 +21,6 @@ export interface GoodsQueryDto {
   shelfNumber?: string;
   /** 入仓条码 */
   inboundBarcode?: string;
+  /** 负责人 */
+  responsiblePerson?: string;
 }

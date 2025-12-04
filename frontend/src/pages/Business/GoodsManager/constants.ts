@@ -21,6 +21,13 @@ export const SEARCH_FIELDS: SearchFieldConfig[] = [
     span: 3,
   },
   {
+    name: 'responsiblePerson',
+    label: '负责人',
+    type: 'input',
+    placeholder: '请输入负责人',
+    span: 3,
+  },
+  {
     name: 'shelfNumber',
     label: '货架号',
     type: 'input',
@@ -114,6 +121,13 @@ export const BASE_COLUMNS: PrimaryTableCol<GoodsEntity>[] = [
     colKey: 'sku',
     width: 180,
     // 自定义渲染在页面中实现
+  },
+  {
+    title: '负责人',
+    colKey: 'responsiblePerson',
+    width: 100,
+    ellipsis: true,
+    cell: ({ row }) => row.responsiblePerson || '-',
   },
   {
     title: '货架号',
@@ -253,6 +267,7 @@ export const FORM_GROUPS = {
       'departmentId',
       'shopName',
       'sku',
+      'responsiblePerson',
       'shelfNumber',
       'imageUrl',
       'inboundBarcode',

@@ -29,6 +29,9 @@ const GoodsFormFields: React.FC<GoodsFormFieldsProps> = ({ deptTreeData, isEdit 
       <FormItem label='SKU' name='sku' rules={[{ required: true, message: '请输入至少一个SKU' }]}>
         <TagInput placeholder='输入后按回车添加SKU' />
       </FormItem>
+      <FormItem label='负责人' name='responsiblePerson'>
+        <Input placeholder='请输入负责人' />
+      </FormItem>
       <FormItem label='货架号' name='shelfNumber'>
         <Input placeholder='请输入货架号' />
       </FormItem>

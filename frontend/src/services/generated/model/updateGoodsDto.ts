@@ -15,6 +15,8 @@ export interface UpdateGoodsDto {
   shopName?: string;
   /** SKU字符串数组 */
   sku?: string[];
+  /** 负责人 */
+  responsiblePerson?: string;
   /** 货架号 */
   shelfNumber?: string;
   /** 产品图片 */

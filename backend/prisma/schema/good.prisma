@@ -9,6 +9,8 @@ model Goods {
     shopName                String?
     /// SKU字符串数组
     sku                     Json
+    /// 负责人
+    responsiblePerson       String?
     /// 货架号
     shelfNumber             String?
     /// 产品图片
@@ -71,8 +73,8 @@ model ExtraCost {
 model GoodChangeLog {
     id        String   @id @default(cuid())
     /// 关联商品
-    goodId    String
-    good      Goods    @relation(fields: [goodId], references: [id], onDelete: Cascade)
+    goodId    String?
+    good      Goods?   @relation(fields: [goodId], references: [id], onDelete: SetNull)
     /// 操作人
     userId    String?
     username  String // 反范式的冗余字段，用于存储用户名

@@ -38,13 +38,8 @@ export class SysGoodsService {
             shopName: query.shopName ? { contains: query.shopName } : undefined,
             shelfNumber: query.shelfNumber || undefined,
             inboundBarcode: query.inboundBarcode || undefined,
-            ...(query.skuKeyword
-              ? {
-                  sku: {
-                    string_contains: query.skuKeyword,
-                  },
-                }
-              : {}),
+            responsiblePerson: query.responsiblePerson ? { contains: query.responsiblePerson } : undefined,
+            ...(query.skuKeyword ? { sku: { array_contains: query.skuKeyword } } : {}),
           },
           accessibleBy(ability).Goods,
         ],
@@ -132,6 +127,7 @@ export class SysGoodsService {
     }
     if (dto.shopName !== undefined) updateData.shopName = dto.shopName
     if (dto.sku !== undefined) updateData.sku = dto.sku
+    if (dto.responsiblePerson !== undefined) updateData.responsiblePerson = dto.responsiblePerson
     if (dto.shelfNumber !== undefined) updateData.shelfNumber = dto.shelfNumber
     if (dto.imageUrl !== undefined) updateData.imageUrl = dto.imageUrl
     if (dto.inboundBarcode !== undefined) updateData.inboundBarcode = dto.inboundBarcode
@@ -155,6 +151,7 @@ export class SysGoodsService {
       departmentId: '部门',
       shopName: '店铺名称',
       sku: 'SKU',
+      responsiblePerson: '负责人',
       shelfNumber: '货架号',
       imageUrl: '产品图片',
       inboundBarcode: '入仓条码',
@@ -250,7 +247,6 @@ export class SysGoodsService {
     // 创建变动日志（在删除前）
     await this.prisma.goodChangeLog.create({
       data: {
-        goodId: id,
         userId: user.id,
         username: user.username,
         content: `删除商品：SKU ${skuInfo}`,
@@ -451,6 +447,7 @@ export class SysGoodsService {
           departmentId: deptInfo.id,
           departmentName: deptName,
           shopName: row['店铺名称'] ? String(row['店铺名称']) : null,
+          responsiblePerson: row['责任人'] ? String(row['责任人']) : null,
           shelfNumber: row['货号'] ? String(row['货号']) : null,
           imageUrl: row['产品图片'] ? String(row['产品图片']) : null,
           inboundBarcode: row['入仓条码'] ? String(row['入仓条码']) : null,

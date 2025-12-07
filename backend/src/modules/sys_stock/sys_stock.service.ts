@@ -2,6 +2,7 @@ import { accessibleBy } from '@casl/prisma'
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common'
 import { ClsService } from 'nestjs-cls'
 import { PrismaService } from 'nestjs-prisma'
+import { ExcelResult } from 'src/common/decorators/export-kit'
 import defineAbilityFor from 'src/shared/casl/casl-ability.factory'
 import { NestPrisma, NestPrismaServiceType } from 'src/shared/prisma/prisma.extension.decorator'
 import * as xlsx from 'xlsx'
@@ -631,5 +632,197 @@ export class SysStockService {
     })
 
     return updatedStockInfo
+  }
+
+  /**
+   * 导出京仓库存信息
+   * @param query 查询参数
+   * @returns Excel 文件
+   */
+  async exportJingCangStock(query: JingCangStockQueryDto): Promise<ExcelResult> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 1. 先查询有库存信息的商品ID列表（用于统计总数和分页）
+    // 注意：这里不应用 warehouse 筛选，因为需要在所有库存记录上判断是否达到预警或滞销
+    const allStockInfos = await this.prisma.jingCangStockInfo.findMany({
+      where: {},
+      select: {
+        goodId: true,
+        stockQuantity: true,
+        reorderThreshold: true,
+        warehouse: true,
+        sluggishDays: true,
+      },
+    })
+
+    // 如果筛选是否达到补货预警或滞销产品，需要过滤出符合条件的商品
+    let filteredGoodIds: string[]
+
+    // 先处理补货预警筛选
+    let afterLowStockFilter: typeof allStockInfos = allStockInfos
+    if (query.isLowStock === true) {
+      // 只返回至少有一个库存记录达到预警的商品（stockQuantity <= reorderThreshold）
+      const filteredInfos = query.warehouse ? allStockInfos.filter((info) => info.warehouse === query.warehouse) : allStockInfos
+      const lowStockGoodIds = new Set(filteredInfos.filter((info) => info.stockQuantity <= info.reorderThreshold).map((info) => info.goodId))
+      afterLowStockFilter = allStockInfos.filter((info) => lowStockGoodIds.has(info.goodId))
+    } else if (query.isLowStock === false) {
+      // 只返回所有库存记录都未达到预警的商品（所有库存记录都 stockQuantity > reorderThreshold）
+      // 按商品分组，判断每个商品是否所有库存记录都未达到预警
+      const goodStockMap = new Map<string, Array<{ stockQuantity: number; reorderThreshold: number; warehouse: string }>>()
+      for (const info of allStockInfos) {
+        if (!goodStockMap.has(info.goodId)) {
+          goodStockMap.set(info.goodId, [])
+        }
+        goodStockMap.get(info.goodId)!.push({
+          stockQuantity: info.stockQuantity,
+          reorderThreshold: info.reorderThreshold,
+          warehouse: info.warehouse,
+        })
+      }
+
+      // 找出所有库存记录都未达到预警的商品
+      const notLowStockGoodIds: string[] = []
+      for (const [goodId, stockList] of goodStockMap.entries()) {
+        // 如果指定了 warehouse，只检查该 warehouse 的库存记录
+        const checkList = query.warehouse ? stockList.filter((s) => s.warehouse === query.warehouse) : stockList
+        // 如果该商品在指定 warehouse 下没有库存记录，跳过
+        if (checkList.length === 0) continue
+        // 检查是否所有库存记录都未达到预警
+        const allNotLowStock = checkList.every((s) => s.stockQuantity > s.reorderThreshold)
+        if (allNotLowStock) {
+          notLowStockGoodIds.push(goodId)
+        }
+      }
+      afterLowStockFilter = allStockInfos.filter((info) => notLowStockGoodIds.includes(info.goodId))
+    }
+
+    // 再处理滞销产品筛选
+    if (query.isSluggish === true) {
+      // 只返回至少有一个库存记录的滞销天数 > 7 的商品
+      const filteredInfos = query.warehouse ? afterLowStockFilter.filter((info) => info.warehouse === query.warehouse) : afterLowStockFilter
+      const sluggishGoodIds = new Set(filteredInfos.filter((info) => info.sluggishDays > 7).map((info) => info.goodId))
+      filteredGoodIds = Array.from(sluggishGoodIds)
+    } else if (query.isSluggish === false) {
+      // 只返回所有库存记录的滞销天数都 <= 7 的商品
+      const goodStockMap = new Map<string, Array<{ sluggishDays: number; warehouse: string }>>()
+      for (const info of afterLowStockFilter) {
+        if (!goodStockMap.has(info.goodId)) {
+          goodStockMap.set(info.goodId, [])
+        }
+        goodStockMap.get(info.goodId)!.push({
+          sluggishDays: info.sluggishDays,
+          warehouse: info.warehouse,
+        })
+      }
+
+      const notSluggishGoodIds: string[] = []
+      for (const [goodId, stockList] of goodStockMap.entries()) {
+        const checkList = query.warehouse ? stockList.filter((s) => s.warehouse === query.warehouse) : stockList
+        if (checkList.length === 0) continue
+        const allNotSluggish = checkList.every((s) => s.sluggishDays <= 7)
+        if (allNotSluggish) {
+          notSluggishGoodIds.push(goodId)
+        }
+      }
+      filteredGoodIds = notSluggishGoodIds
+    } else {
+      // 未传参，返回所有商品
+      const filteredInfos = query.warehouse ? afterLowStockFilter.filter((info) => info.warehouse === query.warehouse) : afterLowStockFilter
+      filteredGoodIds = Array.from(new Set(filteredInfos.map((info) => info.goodId)))
+    }
+
+    const distinctGoodIds = filteredGoodIds
+
+    // 2. 查询所有符合条件的商品（不分页，用于导出）
+    const allGoods = await this.prisma.goods.findMany({
+      where: {
+        AND: [
+          {
+            id: { in: distinctGoodIds },
+            departmentId: query.departmentId || undefined,
+            sku: query.skuKeyword ? { contains: query.skuKeyword } : undefined,
+          },
+          accessibleBy(ability).Goods,
+        ],
+      },
+      select: {
+        id: true,
+        sku: true,
+        departmentName: true,
+        shopName: true,
+        shelfNumber: true,
+        imageUrl: true,
+        inboundBarcode: true,
+        spec: true,
+        purchaseCost: true,
+      },
+    })
+
+    // 3. 批量查询这些商品的库存信息
+    const goodIds = allGoods.map((good) => good.id)
+    const stockInfos = await this.prisma.jingCangStockInfo.findMany({
+      where: {
+        goodId: { in: goodIds },
+        warehouse: query.warehouse || undefined,
+      },
+      orderBy: [{ goodId: 'asc' }, { warehouse: 'asc' }],
+    })
+
+    // 4. 构建商品映射
+    const goodsMap = new Map(
+      allGoods.map((good) => [
+        good.id,
+        {
+          departmentName: good.departmentName,
+          shopName: good.shopName,
+          sku: good.sku,
+          shelfNumber: good.shelfNumber,
+          imageUrl: good.imageUrl,
+          inboundBarcode: good.inboundBarcode,
+          spec: good.spec,
+          purchaseCost: good.purchaseCost ? Number(good.purchaseCost) : null,
+        },
+      ]),
+    )
+
+    // 5. 构建导出数据行（每个商品+库房组合一行）
+    const rows: any[][] = []
+    for (const stockInfo of stockInfos) {
+      const good = goodsMap.get(stockInfo.goodId)
+      if (!good) continue
+
+      // 根据筛选条件决定是否添加
+      let shouldAdd = true
+
+      if (query.isLowStock === true) {
+        shouldAdd = stockInfo.stockQuantity <= stockInfo.reorderThreshold
+      } else if (query.isLowStock === false) {
+        shouldAdd = stockInfo.stockQuantity > stockInfo.reorderThreshold
+      }
+
+      if (query.isSluggish === true) {
+        shouldAdd = shouldAdd && stockInfo.sluggishDays > 7
+      } else if (query.isSluggish === false) {
+        shouldAdd = shouldAdd && stockInfo.sluggishDays <= 7
+      }
+
+      if (!shouldAdd) continue
+
+      // 计算周转天数
+      const turnoverDays = stockInfo.dailySalesQuantity > 0 ? stockInfo.stockQuantity / stockInfo.dailySalesQuantity : null
+
+      // 计算进货成本总货值
+      const purchaseCostValue = good.purchaseCost !== null ? stockInfo.stockQuantity * good.purchaseCost : null
+
+      rows.push([good.departmentName || '', good.shopName || '', good.sku || '', good.shelfNumber || '', good.imageUrl || '', good.inboundBarcode || '', good.spec || '', stockInfo.warehouse || '', stockInfo.stockQuantity || 0, stockInfo.dailySalesQuantity || 0, stockInfo.monthlySalesQuantity || 0, turnoverDays !== null ? turnoverDays.toFixed(2) : '', stockInfo.sluggishDays || 0, purchaseCostValue !== null ? purchaseCostValue.toFixed(2) : ''])
+    }
+
+    // 6. 返回 Excel 结果
+    return new ExcelResult({
+      filename: `京仓库存信息_${new Date().toISOString().split('T')[0]}.xlsx`,
+      headers: ['部门', '店铺名称', 'SKU', '货号', '产品图片', '入仓条码', '产品规格', '所属库房', '库存数量', '日销量', '月销量', '周转天数', '滞销天数', '进货成本总货值'],
+      rows,
+    })
   }
 }

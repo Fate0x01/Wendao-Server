@@ -3,6 +3,7 @@ import { CrudToolbar } from 'components/CrudKit';
 import { useCrudTable } from 'components/CrudKit/hooks';
 import type { ToolbarActionConfig } from 'components/CrudKit/types';
 import DeptTreeSelect, { useDeptTree } from 'components/DeptTreeSelect';
+import { useDownloadNotify } from 'components/DownloadNotifyModal';
 import React, { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import api from 'services';
 import type {
@@ -90,6 +91,9 @@ const JingCangStockManager: React.FC = () => {
   const [importResult, setImportResult] = useState<StockImportResultEntity | null>(null);
   const [importLoading, setImportLoading] = useState(false);
   const [importEmgSkuMappingLoading, setImportEmgSkuMappingLoading] = useState(false);
+
+  // 导出功能
+  const { startDownload, DownloadModal } = useDownloadNotify();
 
   // 补货预警阈值弹窗状态
   const [reorderThresholdVisible, setReorderThresholdVisible] = useState(false);
@@ -202,6 +206,27 @@ const JingCangStockManager: React.FC = () => {
     link.click();
     document.body.removeChild(link);
   }, []);
+
+  // 导出京仓库存信息
+  const handleExport = useCallback(() => {
+    // 获取当前筛选条件（排除分页参数）
+    const exportQuery = getStatisticsQuery(filters);
+
+    startDownload({
+      downloadFn: async () => {
+        const response = await api.sysStockControllerExportJingCangStock(exportQuery);
+        // 响应拦截器已经处理了 Blob 响应，直接返回
+        if (response instanceof Blob) {
+          return response;
+        }
+        // 如果不是 Blob，抛出错误
+        throw new Error('导出失败：响应格式不正确');
+      },
+      defaultFileName: `京仓库存信息_${new Date().toISOString().split('T')[0]}.xlsx`,
+      downloadText: '正在导出京仓库存信息，请稍候...',
+      saveText: '导出完成，请点击保存按钮保存文件',
+    });
+  }, [filters, getStatisticsQuery, startDownload]);
 
   // 导入 EMG/SKU 映射
   const handleImportEmgSkuMapping = useCallback(async () => {
@@ -392,6 +417,12 @@ const JingCangStockManager: React.FC = () => {
   const toolbarExtraActions = useMemo<ToolbarActionConfig[]>(
     () => [
       {
+        key: 'export',
+        label: '导出库存',
+        icon: <DownloadIcon />,
+        onClick: handleExport,
+      },
+      {
         key: 'download',
         label: '下载模板',
         icon: <DownloadIcon />,
@@ -412,7 +443,14 @@ const JingCangStockManager: React.FC = () => {
         disabled: importLoading,
       },
     ],
-    [handleDownloadTemplate, handleImportEmgSkuMapping, importEmgSkuMappingLoading, handleImport, importLoading],
+    [
+      handleExport,
+      handleDownloadTemplate,
+      handleImportEmgSkuMapping,
+      importEmgSkuMappingLoading,
+      handleImport,
+      importLoading,
+    ],
   );
 
   // 构建表格列配置
@@ -755,6 +793,9 @@ const JingCangStockManager: React.FC = () => {
         onClose={handleCloseReorderThreshold}
         onSubmit={handleSubmitReorderThreshold}
       />
+
+      {/* 导出下载弹窗 */}
+      <DownloadModal />
     </div>
   );
 };

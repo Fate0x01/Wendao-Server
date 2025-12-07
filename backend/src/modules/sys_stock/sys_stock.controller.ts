@@ -2,6 +2,7 @@ import { Body, Controller, Post } from '@nestjs/common'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
 import { ClsService } from 'nestjs-cls'
 import { PrismaService } from 'nestjs-prisma'
+import { UseFileDownload } from 'src/common/decorators/export-kit'
 import { Permission } from 'src/common/decorators/permission.decorator'
 import { ApiResult, ResultData } from 'src/common/decorators/response.decorator'
 import { GetFile, UseFileUpload } from 'src/common/decorators/upload-kit'
@@ -46,7 +47,7 @@ export class SysStockController {
   @Post('statistics-jing-cang-stock')
   @ApiOperation({ summary: '统计京仓库存信息' })
   @ApiResult(JingCangStockStatisticsEntity)
-  @Permission({ group: '库存管理', name: '统计京仓库存信息', model: 'JingCangStockInfo', code: 'stock:statistics-jing-cang-stock' })
+  @Permission({ group: '库存管理', name: '查询京仓库存信息', model: 'JingCangStockInfo', code: 'stock:list-jing-cang-stock' })
   async statisticsJingCangStock(@Body() query: JingCangStockQueryDto) {
     const statistics = await this.sysStockService.getJingCangStockStatistics(query)
     return ResultData.ok(statistics)
@@ -59,5 +60,13 @@ export class SysStockController {
   async setReorderThreshold(@Body() dto: SetReorderThresholdDto) {
     const stockInfo = await this.sysStockService.setReorderThreshold(dto)
     return ResultData.ok(stockInfo)
+  }
+
+  @Post('export-jing-cang-stock')
+  @ApiOperation({ summary: '导出京仓库存信息' })
+  @UseFileDownload({ description: '导出京仓库存信息 Excel' })
+  @Permission({ group: '库存管理', name: '导出京仓库存信息', model: 'JingCangStockInfo', code: 'stock:export-jing-cang-stock' })
+  async exportJingCangStock(@Body() query: JingCangStockQueryDto) {
+    return await this.sysStockService.exportJingCangStock(query)
   }
 }

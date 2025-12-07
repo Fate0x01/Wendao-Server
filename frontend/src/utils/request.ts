@@ -62,6 +62,11 @@ const doRefreshToken = async () => {
 instance.interceptors.response.use(
   (response) => {
     const { data } = response;
+    // 如果是 Blob 响应（文件下载），直接返回 Blob，不进行 code 检查
+    if (data instanceof Blob) {
+      return data;
+    }
+    // 普通 JSON 响应，检查 code
     if (data.code === SUCCESS_CODE) {
       return data;
     }

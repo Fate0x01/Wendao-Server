@@ -19,8 +19,8 @@ export interface GoodsEntity {
    * @nullable
    */
   shopName?: string | null;
-  /** SKU字符串数组 */
-  sku: string[];
+  /** SKU */
+  sku: string;
   /** 负责人 */
   responsiblePerson: string;
   /**

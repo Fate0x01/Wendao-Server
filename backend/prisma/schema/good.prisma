@@ -8,7 +8,7 @@ model Goods {
     /// 店铺名称 
     shopName                String?
     /// SKU字符串数组
-    sku                     Json
+    sku                     String          @unique
     /// 负责人
     responsiblePerson       String?
     /// 货架号

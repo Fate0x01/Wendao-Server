@@ -1,7 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
-import { IsArray, IsNumber, IsOptional, IsString, Min } from 'class-validator'
-import { Decimal } from '@prisma/client/runtime/library'
+import { IsNumber, IsOptional, IsString, Min } from 'class-validator'
 
 export class UpdateGoodsDto {
   @ApiProperty({ description: '商品ID', type: String })
@@ -18,10 +17,10 @@ export class UpdateGoodsDto {
   @IsString({ message: '店铺名称必须为字符串' })
   shopName?: string
 
-  @ApiPropertyOptional({ description: 'SKU字符串数组', type: Array })
+  @ApiPropertyOptional({ description: 'SKU', type: String })
   @IsOptional()
-  @IsArray({ message: 'SKU必须为数组' })
-  sku?: string[]
+  @IsString({ message: 'SKU必须为字符串' })
+  sku?: string
 
   @ApiPropertyOptional({ description: '负责人', type: String })
   @IsOptional()
@@ -130,4 +129,3 @@ export class UpdateGoodsDto {
   @Min(0, { message: '货损比例不能小于0' })
   lossRatio?: number
 }
-

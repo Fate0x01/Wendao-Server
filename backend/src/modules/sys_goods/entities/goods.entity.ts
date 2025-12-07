@@ -14,8 +14,8 @@ export class GoodsEntity {
   @ApiPropertyOptional({ description: '店铺名称', nullable: true, type: String })
   shopName?: string | null
 
-  @ApiProperty({ description: 'SKU字符串数组', type: Array })
-  sku: string[]
+  @ApiProperty({ description: 'SKU', type: String })
+  sku: string
 
   @ApiProperty({ description: '负责人' })
   responsiblePerson?: string | null

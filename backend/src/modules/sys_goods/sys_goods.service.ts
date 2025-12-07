@@ -39,7 +39,7 @@ export class SysGoodsService {
             shelfNumber: query.shelfNumber || undefined,
             inboundBarcode: query.inboundBarcode || undefined,
             responsiblePerson: query.responsiblePerson ? { contains: query.responsiblePerson } : undefined,
-            ...(query.skuKeyword ? { sku: { array_contains: query.skuKeyword } } : {}),
+            ...(query.skuKeyword ? { sku: { contains: query.skuKeyword } } : {}),
           },
           accessibleBy(ability).Goods,
         ],
@@ -117,16 +117,11 @@ export class SysGoodsService {
       departmentName = department.name
     }
 
-    // SKU 去重检查：当更新 SKU 时，检查新增的 SKU 是否已存在于其他商品
-    if (dto.sku !== undefined) {
-      const oldSkuSet = new Set(Array.isArray(existingGood.sku) ? (existingGood.sku as string[]) : [])
-      const newSkus = dto.sku.filter((sku) => !oldSkuSet.has(sku))
-
-      if (newSkus.length > 0) {
-        const duplicateSkus = await this.findExistingSkus(newSkus, dto.id)
-        if (duplicateSkus.length > 0) {
-          throw new BadRequestException(`SKU 已存在于其他商品：${duplicateSkus.join(', ')}`)
-        }
+    // SKU 唯一性检查：当更新 SKU 时，检查新的 SKU 是否已存在于其他商品
+    if (dto.sku !== undefined && dto.sku !== existingGood.sku) {
+      const existingGoodWithSku = await this.prisma.goods.findFirst({ where: { sku: dto.sku, id: { not: dto.id } }, select: { id: true } })
+      if (existingGoodWithSku) {
+        throw new BadRequestException(`SKU "${dto.sku}" 已存在于其他商品`)
       }
     }
 
@@ -194,12 +189,7 @@ export class SysGoodsService {
       if (oldValue instanceof Decimal) oldValStr = oldValue.toString()
       if (value instanceof Decimal) newValStr = value.toString()
 
-      // 处理数组类型（SKU）
-      if (key === 'sku') {
-        oldValStr = Array.isArray(oldValue) ? JSON.stringify(oldValue) : '空'
-        newValStr = Array.isArray(value) ? JSON.stringify(value) : '空'
-      }
-
+      // SKU 已经是字符串类型，无需特殊处理
       if (oldValStr !== newValStr) {
         changes.push(`${fieldName}: ${oldValStr} → ${newValStr}`)
       }
@@ -255,7 +245,7 @@ export class SysGoodsService {
     }
 
     // 提取 SKU 信息
-    const skuInfo = Array.isArray(existingGood.sku) ? existingGood.sku.join(', ') : '无'
+    const skuInfo = existingGood.sku || '无'
 
     // 创建变动日志（在删除前）
     await this.prisma.goodChangeLog.create({
@@ -379,41 +369,6 @@ export class SysGoodsService {
   }
 
   /**
-   * 修剪SKU字符串
-   * @param str SKU字符串
-   * @returns SKU数组
-   */
-  trimSkuString(str: String) {
-    return String(str)
-      .trim()
-      .split(/[\s\n]+/)
-      .filter((s) => s.length > 0)
-  }
-
-  /**
-   * 检查 SKU 列表中是否存在已被其他商品使用的 SKU
-   * @param skuList 待检查的 SKU 列表
-   * @param excludeGoodId 排除的商品 ID（用于更新场景）
-   * @returns 已存在的 SKU 列表
-   */
-  async findExistingSkus(skuList: string[], excludeGoodId?: string): Promise<string[]> {
-    if (!skuList.length) return []
-
-    const existingSkus: string[] = []
-    for (const sku of skuList) {
-      const existing = await this.prisma.goods.findFirst({
-        where: {
-          sku: { array_contains: sku },
-          ...(excludeGoodId ? { id: { not: excludeGoodId } } : {}),
-        },
-        select: { id: true },
-      })
-      if (existing) existingSkus.push(sku)
-    }
-    return existingSkus
-  }
-
-  /**
    * 导入商品
    * @param file Excel文件
    */
@@ -440,18 +395,7 @@ export class SysGoodsService {
     const accessibleDepts = await this.nestPrisma.client.department.findMany({ where: { AND: [accessibleBy(ability).Department] }, select: { id: true } })
     const accessibleDeptIds = new Set(accessibleDepts.map((d) => d.id))
 
-    // 3. 预加载所有现有 SKU，用于去重检查
-    const allGoods = await this.prisma.goods.findMany({ select: { sku: true } })
-    const existingSkuSet = new Set<string>()
-    for (const good of allGoods) {
-      if (Array.isArray(good.sku)) {
-        for (const sku of good.sku as string[]) {
-          existingSkuSet.add(sku)
-        }
-      }
-    }
-
-    // 4. 转换并插入数据
+    // 3. 转换并插入/更新数据（基于 SKU 的 upsert）
     let successCount = 0
     let failCount = 0
     const errors: string[] = []
@@ -504,16 +448,11 @@ export class SysGoodsService {
 
         // 处理SKU
         const skuVal = row['SKU']
-        const skuArray = skuVal ? this.trimSkuString(skuVal) : []
-        goodsData.sku = skuArray
-
-        // SKU 去重检查
-        if (skuArray.length > 0) {
-          const duplicateSkus = skuArray.filter((sku) => existingSkuSet.has(sku))
-          if (duplicateSkus.length > 0) {
-            throw new Error(`SKU 已存在于系统：${duplicateSkus.join(', ')}`)
-          }
+        if (!skuVal || String(skuVal).trim() === '') {
+          throw new Error('SKU 不能为空')
         }
+        const sku = String(skuVal).trim()
+        goodsData.sku = sku
 
         // 处理数值字段
         for (const [cn, en] of decimalFields) {
@@ -522,16 +461,50 @@ export class SysGoodsService {
           }
         }
 
-        // 插入数据库
-        const newGood = await this.prisma.goods.create({ data: goodsData })
+        // 基于 SKU 进行 upsert
+        const existingGood = await this.prisma.goods.findUnique({
+          where: { sku },
+          select: { id: true },
+        })
 
-        // 将新导入的 SKU 加入已存在集合，避免同批次内重复
-        for (const sku of skuArray) {
-          existingSkuSet.add(sku)
+        let good
+        let isUpdate = false
+        if (existingGood) {
+          // 检查权限：需要能够访问该商品
+          const accessibleGood = await this.prisma.goods.findFirst({
+            where: {
+              id: existingGood.id,
+              AND: [accessibleBy(ability).Goods],
+            },
+          })
+          if (!accessibleGood) {
+            throw new ForbiddenException(`无权限更新 SKU "${sku}" 对应的商品`)
+          }
+          if (!ability.can(Actions.Update, 'Goods', existingGood.id)) {
+            throw new ForbiddenException(`无权限更新 SKU "${sku}" 对应的商品`)
+          }
+
+          // 更新商品
+          good = await this.prisma.goods.update({
+            where: { id: existingGood.id },
+            data: goodsData,
+          })
+          isUpdate = true
+        } else {
+          // 创建新商品
+          good = await this.prisma.goods.create({ data: goodsData })
         }
 
-        // 记录导入日志
-        await this.prisma.goodChangeLog.create({ data: { goodId: newGood.id, userId: user.id, username: user.username, content: '导入商品' } })
+        // 记录导入/更新日志
+        const logContent = isUpdate ? `导入更新商品（SKU: ${sku}）` : `导入商品（SKU: ${sku}）`
+        await this.prisma.goodChangeLog.create({
+          data: {
+            goodId: good.id,
+            userId: user.id,
+            username: user.username,
+            content: logContent,
+          },
+        })
         successCount++
       } catch (error) {
         failCount++

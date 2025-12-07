@@ -1,6 +1,6 @@
 import DeptTreeSelect, { type DeptTreeNode } from 'components/DeptTreeSelect';
 import React, { memo } from 'react';
-import { Divider, Form, Input, InputNumber, TagInput } from 'tdesign-react';
+import { Divider, Form, Input, InputNumber } from 'tdesign-react';
 
 const { FormItem } = Form;
 
@@ -26,8 +26,8 @@ const GoodsFormFields: React.FC<GoodsFormFieldsProps> = ({ deptTreeData, isEdit 
       <FormItem label='店铺名称' name='shopName'>
         <Input placeholder='请输入店铺名称' />
       </FormItem>
-      <FormItem label='SKU' name='sku' rules={[{ required: true, message: '请输入至少一个SKU' }]}>
-        <TagInput placeholder='输入后按回车添加SKU' />
+      <FormItem label='SKU' name='sku' rules={[{ required: true, message: '请输入SKU' }]}>
+        <Input placeholder='请输入SKU' />
       </FormItem>
       <FormItem label='负责人' name='responsiblePerson'>
         <Input placeholder='请输入负责人' />

@@ -36,49 +36,14 @@ import { BASE_COLUMNS, calcNetProfitMargin, calcProfit, COST_DETAIL_COLUMNS, DEF
 
 /**
  * SKU 展示组件
- * 支持展开/收起功能
  */
-const SkuCell: React.FC<{ skus: string[] }> = memo(({ skus }) => {
-  const [expanded, setExpanded] = useState(false);
-
-  if (!skus || skus.length === 0) return <span className='text-gray-400'>-</span>;
-
-  if (skus.length <= 2) {
-    return (
-      <div className='flex flex-wrap gap-1'>
-        {skus.map((sku, index) => (
-          <Tag key={index} size='small' variant='light'>
-            {sku}
-          </Tag>
-        ))}
-      </div>
-    );
-  }
-
-  if (!expanded) {
-    return (
-      <div className='flex items-center gap-1'>
-        <Tag size='small' variant='light'>
-          {skus[0]}
-        </Tag>
-        <Button variant='text' size='small' theme='primary' onClick={() => setExpanded(true)}>
-          等{skus.length}个
-        </Button>
-      </div>
-    );
-  }
+const SkuCell: React.FC<{ sku: string }> = memo(({ sku }) => {
+  if (!sku) return <span className='text-gray-400'>-</span>;
 
   return (
-    <div className='flex flex-wrap gap-1'>
-      {skus.map((sku, index) => (
-        <Tag key={index} size='small' variant='light'>
-          {sku}
-        </Tag>
-      ))}
-      <Button variant='text' size='small' theme='primary' onClick={() => setExpanded(false)}>
-        收起
-      </Button>
-    </div>
+    <Tag size='small' variant='light'>
+      {sku}
+    </Tag>
   );
 });
 
@@ -319,7 +284,7 @@ const GoodsManager: React.FC = () => {
   // 为列添加自定义渲染逻辑
   const applyCustomRenderers = useCallback((col: PrimaryTableCol<GoodsEntity>): PrimaryTableCol<GoodsEntity> => {
     if (col.colKey === 'sku') {
-      return { ...col, cell: ({ row }: { row: GoodsEntity }) => <SkuCell skus={row.sku} /> };
+      return { ...col, cell: ({ row }: { row: GoodsEntity }) => <SkuCell sku={row.sku} /> };
     }
     if (col.colKey === 'imageUrl') {
       return { ...col, cell: ({ row }: { row: GoodsEntity }) => <ImageCell url={row.imageUrl} /> };

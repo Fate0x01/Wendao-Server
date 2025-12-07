@@ -111,6 +111,10 @@ export class SysStockService {
         }
         const warehouseNameStr = String(warehouseName).trim()
         const warehouse = warehouseNameStr.length >= 2 ? warehouseNameStr.substring(0, 2) : warehouseNameStr
+        if (warehouse === '全国') {
+          // 表格内可能存在冗余数据，需要进行跳过
+          continue
+        }
 
         // 获取其他字段
         const stockQuantity = row['在库件数'] !== undefined && row['在库件数'] !== '' ? Number(row['在库件数']) : null

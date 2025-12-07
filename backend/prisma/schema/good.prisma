@@ -115,7 +115,7 @@ model JingCangStockInfo {
     /// 月销量
     monthlySalesQuantity Int
     /// 补货预警阈值
-    reorderThreshold     Int      @default(0)
+    reorderThreshold     Int      @default(10)
     /// 创建时间
     createdAt            DateTime @default(now())
     /// 更新时间

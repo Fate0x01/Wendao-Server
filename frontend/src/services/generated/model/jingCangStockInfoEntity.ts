@@ -19,6 +19,8 @@ export interface JingCangStockInfoEntity {
   monthlySalesQuantity: number;
   /** 补货预警阈值 */
   reorderThreshold: number;
+  /** 滞销天数 */
+  sluggishDays: number;
   /** 创建时间 */
   createdAt: string;
   /** 更新时间 */

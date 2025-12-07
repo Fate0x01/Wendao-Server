@@ -36,6 +36,12 @@ export class JingCangStockQueryDto {
   @IsBoolean({ message: '是否达到补货预警必须为布尔值' })
   isLowStock?: boolean
 
+  @ApiPropertyOptional({ description: '是否滞销产品（滞销天数大于7天）', type: Boolean })
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean({ message: '是否滞销产品必须为布尔值' })
+  isSluggish?: boolean
+
   @ApiPropertyOptional({ description: '排序字段', enum: ['totalStockQuantity', 'totalDailySalesQuantity', 'totalMonthlySalesQuantity', 'totalPurchaseCostValue'], type: String })
   @IsOptional()
   @IsString({ message: '排序字段必须为字符串' })

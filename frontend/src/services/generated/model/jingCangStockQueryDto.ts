@@ -21,6 +21,8 @@ export interface JingCangStockQueryDto {
   warehouse?: string;
   /** 是否达到补货预警 */
   isLowStock?: boolean;
+  /** 是否滞销产品（滞销天数大于7天） */
+  isSluggish?: boolean;
   /** 排序字段 */
   sortField?: JingCangStockQueryDtoSortField;
   /** 排序方向 */

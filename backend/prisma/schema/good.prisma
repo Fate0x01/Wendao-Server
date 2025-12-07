@@ -116,6 +116,8 @@ model JingCangStockInfo {
     monthlySalesQuantity Int
     /// 补货预警阈值
     reorderThreshold     Int      @default(10)
+    /// 滞销天数
+    sluggishDays         Int      @default(0)
     /// 创建时间
     createdAt            DateTime @default(now())
     /// 更新时间

@@ -132,6 +132,28 @@ export class SysStockService {
           throw new Error('近30日出库商品件数/近30天销售出库件数不能为空且必须为数字')
         }
 
+        // 查询现有记录以获取当前的滞销天数
+        const existingStock = await this.prisma.jingCangStockInfo.findUnique({
+          where: {
+            goodId_warehouse: {
+              goodId,
+              warehouse,
+            },
+          },
+        })
+
+        // 计算滞销天数
+        const finalStockQuantity = Math.floor(stockQuantity)
+        const finalDailySalesQuantity = Math.floor(dailySalesQuantity)
+        let newSluggishDays = 0
+        if (finalStockQuantity > 0 && finalDailySalesQuantity === 0) {
+          newSluggishDays = existingStock ? existingStock.sluggishDays + 1 : 1 // 库存大于 0 且日销量为 0，滞销天数递增
+        } else if (finalDailySalesQuantity > 0) {
+          newSluggishDays = 0 // 日销量大于 0，滞销天数重置
+        } else {
+          newSluggishDays = 0 // 库存为 0 时，滞销天数重置
+        }
+
         // 执行 upsert（基于 goodId 和 warehouse 的唯一约束）
         await this.prisma.jingCangStockInfo.upsert({
           where: {
@@ -141,16 +163,18 @@ export class SysStockService {
             },
           },
           update: {
-            stockQuantity: Math.floor(stockQuantity),
-            dailySalesQuantity: Math.floor(dailySalesQuantity),
+            stockQuantity: finalStockQuantity,
+            dailySalesQuantity: finalDailySalesQuantity,
             monthlySalesQuantity: Math.floor(monthlySalesQuantity),
+            sluggishDays: newSluggishDays,
           },
           create: {
             goodId,
             warehouse,
-            stockQuantity: Math.floor(stockQuantity),
-            dailySalesQuantity: Math.floor(dailySalesQuantity),
+            stockQuantity: finalStockQuantity,
+            dailySalesQuantity: finalDailySalesQuantity,
             monthlySalesQuantity: Math.floor(monthlySalesQuantity),
+            sluggishDays: newSluggishDays,
           },
         })
 
@@ -179,7 +203,7 @@ export class SysStockService {
     const ability = defineAbilityFor(user)
 
     // 1. 先查询有库存信息的商品ID列表（用于统计总数和分页）
-    // 注意：这里不应用 warehouse 筛选，因为需要在所有库存记录上判断是否达到预警
+    // 注意：这里不应用 warehouse 筛选，因为需要在所有库存记录上判断是否达到预警或滞销
     const allStockInfos = await this.prisma.jingCangStockInfo.findMany({
       where: {},
       select: {
@@ -187,17 +211,20 @@ export class SysStockService {
         stockQuantity: true,
         reorderThreshold: true,
         warehouse: true,
+        sluggishDays: true,
       },
     })
 
-    // 如果筛选是否达到补货预警，需要过滤出符合条件的商品
+    // 如果筛选是否达到补货预警或滞销产品，需要过滤出符合条件的商品
     let filteredGoodIds: string[]
+
+    // 先处理补货预警筛选
+    let afterLowStockFilter: typeof allStockInfos = allStockInfos
     if (query.isLowStock === true) {
       // 只返回至少有一个库存记录达到预警的商品（stockQuantity <= reorderThreshold）
-      // 如果指定了 warehouse，需要同时满足 warehouse 条件
       const filteredInfos = query.warehouse ? allStockInfos.filter((info) => info.warehouse === query.warehouse) : allStockInfos
       const lowStockGoodIds = new Set(filteredInfos.filter((info) => info.stockQuantity <= info.reorderThreshold).map((info) => info.goodId))
-      filteredGoodIds = Array.from(lowStockGoodIds)
+      afterLowStockFilter = allStockInfos.filter((info) => lowStockGoodIds.has(info.goodId))
     } else if (query.isLowStock === false) {
       // 只返回所有库存记录都未达到预警的商品（所有库存记录都 stockQuantity > reorderThreshold）
       // 按商品分组，判断每个商品是否所有库存记录都未达到预警
@@ -226,10 +253,41 @@ export class SysStockService {
           notLowStockGoodIds.push(goodId)
         }
       }
-      filteredGoodIds = notLowStockGoodIds
+      afterLowStockFilter = allStockInfos.filter((info) => notLowStockGoodIds.includes(info.goodId))
+    }
+
+    // 再处理滞销产品筛选
+    if (query.isSluggish === true) {
+      // 只返回至少有一个库存记录的滞销天数 > 7 的商品
+      const filteredInfos = query.warehouse ? afterLowStockFilter.filter((info) => info.warehouse === query.warehouse) : afterLowStockFilter
+      const sluggishGoodIds = new Set(filteredInfos.filter((info) => info.sluggishDays > 7).map((info) => info.goodId))
+      filteredGoodIds = Array.from(sluggishGoodIds)
+    } else if (query.isSluggish === false) {
+      // 只返回所有库存记录的滞销天数都 <= 7 的商品
+      const goodStockMap = new Map<string, Array<{ sluggishDays: number; warehouse: string }>>()
+      for (const info of afterLowStockFilter) {
+        if (!goodStockMap.has(info.goodId)) {
+          goodStockMap.set(info.goodId, [])
+        }
+        goodStockMap.get(info.goodId)!.push({
+          sluggishDays: info.sluggishDays,
+          warehouse: info.warehouse,
+        })
+      }
+
+      const notSluggishGoodIds: string[] = []
+      for (const [goodId, stockList] of goodStockMap.entries()) {
+        const checkList = query.warehouse ? stockList.filter((s) => s.warehouse === query.warehouse) : stockList
+        if (checkList.length === 0) continue
+        const allNotSluggish = checkList.every((s) => s.sluggishDays <= 7)
+        if (allNotSluggish) {
+          notSluggishGoodIds.push(goodId)
+        }
+      }
+      filteredGoodIds = notSluggishGoodIds
     } else {
       // 未传参，返回所有商品
-      const filteredInfos = query.warehouse ? allStockInfos.filter((info) => info.warehouse === query.warehouse) : allStockInfos
+      const filteredInfos = query.warehouse ? afterLowStockFilter.filter((info) => info.warehouse === query.warehouse) : afterLowStockFilter
       filteredGoodIds = Array.from(new Set(filteredInfos.map((info) => info.goodId)))
     }
 
@@ -294,6 +352,7 @@ export class SysStockService {
           dailySalesQuantity: number
           monthlySalesQuantity: number
           reorderThreshold: number
+          sluggishDays: number
           createdAt: Date
           updatedAt: Date
         }>
@@ -321,36 +380,25 @@ export class SysStockService {
       const goodGroup = goodsMap.get(stockInfo.goodId)
       if (goodGroup) {
         // 根据筛选条件决定是否添加库存记录
+        let shouldAdd = true
+
         if (query.isLowStock === true) {
           // 只添加达到预警的库存记录（stockQuantity <= reorderThreshold）
-          if (stockInfo.stockQuantity <= stockInfo.reorderThreshold) {
-            goodGroup.stockInfos.push({
-              id: stockInfo.id,
-              warehouse: stockInfo.warehouse,
-              stockQuantity: stockInfo.stockQuantity,
-              dailySalesQuantity: stockInfo.dailySalesQuantity,
-              monthlySalesQuantity: stockInfo.monthlySalesQuantity,
-              reorderThreshold: stockInfo.reorderThreshold,
-              createdAt: stockInfo.createdAt,
-              updatedAt: stockInfo.updatedAt,
-            })
-          }
+          shouldAdd = stockInfo.stockQuantity <= stockInfo.reorderThreshold
         } else if (query.isLowStock === false) {
           // 只添加未达到预警的库存记录（stockQuantity > reorderThreshold）
-          if (stockInfo.stockQuantity > stockInfo.reorderThreshold) {
-            goodGroup.stockInfos.push({
-              id: stockInfo.id,
-              warehouse: stockInfo.warehouse,
-              stockQuantity: stockInfo.stockQuantity,
-              dailySalesQuantity: stockInfo.dailySalesQuantity,
-              monthlySalesQuantity: stockInfo.monthlySalesQuantity,
-              reorderThreshold: stockInfo.reorderThreshold,
-              createdAt: stockInfo.createdAt,
-              updatedAt: stockInfo.updatedAt,
-            })
-          }
-        } else {
-          // 未传参，添加所有库存记录
+          shouldAdd = stockInfo.stockQuantity > stockInfo.reorderThreshold
+        }
+
+        if (query.isSluggish === true) {
+          // 只添加滞销天数 > 7 的库存记录
+          shouldAdd = shouldAdd && stockInfo.sluggishDays > 7
+        } else if (query.isSluggish === false) {
+          // 只添加滞销天数 <= 7 的库存记录
+          shouldAdd = shouldAdd && stockInfo.sluggishDays <= 7
+        }
+
+        if (shouldAdd) {
           goodGroup.stockInfos.push({
             id: stockInfo.id,
             warehouse: stockInfo.warehouse,
@@ -358,6 +406,7 @@ export class SysStockService {
             dailySalesQuantity: stockInfo.dailySalesQuantity,
             monthlySalesQuantity: stockInfo.monthlySalesQuantity,
             reorderThreshold: stockInfo.reorderThreshold,
+            sluggishDays: stockInfo.sluggishDays,
             createdAt: stockInfo.createdAt,
             updatedAt: stockInfo.updatedAt,
           })
@@ -368,8 +417,8 @@ export class SysStockService {
     // 5. 转换为数组并计算统计信息，过滤掉没有库存信息的商品（当筛选时）
     let rows = Array.from(goodsMap.values())
       .filter((group) => {
-        // 如果筛选了 isLowStock，过滤掉没有符合条件库存记录的商品
-        if (query.isLowStock === true || query.isLowStock === false) {
+        // 如果筛选了 isLowStock 或 isSluggish，过滤掉没有符合条件库存记录的商品
+        if (query.isLowStock === true || query.isLowStock === false || query.isSluggish === true || query.isSluggish === false) {
           return group.stockInfos.length > 0
         }
         return true

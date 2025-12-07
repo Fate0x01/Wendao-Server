@@ -19,6 +19,9 @@ export class JingCangStockInfoEntity {
   @ApiProperty({ description: '补货预警阈值', type: Number })
   reorderThreshold: number
 
+  @ApiProperty({ description: '滞销天数', type: Number })
+  sluggishDays: number
+
   @ApiProperty({ description: '创建时间', type: String, format: 'date-time' })
   createdAt: Date
 

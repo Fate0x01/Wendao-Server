@@ -313,8 +313,8 @@ const JingCangStockManager: React.FC = () => {
     // 过滤空值
     Object.entries(formValues || {}).forEach(([key, value]) => {
       if (value !== undefined && value !== null && value !== '') {
-        // isLowStock 需要保持布尔值类型
-        if (key === 'isLowStock') {
+        // isLowStock 和 isSluggish 需要保持布尔值类型
+        if (key === 'isLowStock' || key === 'isSluggish') {
           searchParams[key] = value === true || value === 'true';
         } else {
           searchParams[key] = value;
@@ -550,6 +550,19 @@ const JingCangStockManager: React.FC = () => {
           },
         },
         {
+          title: '滞销天数',
+          colKey: 'sluggishDays',
+          width: 120,
+          align: 'right',
+          cell: ({ row: stockRow }) => {
+            const sluggishDays = stockRow.sluggishDays || 0;
+            if (sluggishDays > 7) {
+              return <Tag theme='warning'>滞销产品</Tag>;
+            }
+            return <span>{sluggishDays}</span>;
+          },
+        },
+        {
           title: '补货预警阈值',
           colKey: 'reorderThreshold',
           width: 140,
@@ -649,6 +662,11 @@ const JingCangStockManager: React.FC = () => {
                 <Col span={3} xs={12} sm={6} xl={3}>
                   <FormItem label='补货预警' name='isLowStock'>
                     <Select placeholder='请选择' clearable options={[{ label: '预警中', value: true }]} />
+                  </FormItem>
+                </Col>
+                <Col span={3} xs={12} sm={6} xl={3}>
+                  <FormItem label='滞销产品' name='isSluggish'>
+                    <Select placeholder='请选择' clearable options={[{ label: '滞销产品', value: true }]} />
                   </FormItem>
                 </Col>
                 <Col span={3} xs={12} sm={6} xl={3}>

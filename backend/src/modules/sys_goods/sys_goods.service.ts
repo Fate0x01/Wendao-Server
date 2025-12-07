@@ -519,4 +519,58 @@ export class SysGoodsService {
       errors: errors.slice(0, 20),
     }
   }
+
+  /**
+   * 导入 EMG/SKU 映射
+   * @param file Excel文件
+   */
+  async importEmgSkuMapping(file: Express.Multer.File) {
+    // 1. 解析 Excel
+    const workbook = xlsx.read(file.buffer, { type: 'buffer' })
+    if (!workbook.SheetNames.length) {
+      throw new BadRequestException('Excel 文件为空')
+    }
+    const sheetName = workbook.SheetNames[0]
+    const sheet = workbook.Sheets[sheetName]
+    const rawData = xlsx.utils.sheet_to_json(sheet)
+    if (!rawData.length) {
+      throw new BadRequestException('Excel 数据为空')
+    }
+
+    // 2. 处理数据并执行 upsert
+    let successCount = 0
+    let failCount = 0
+    const errors: string[] = []
+
+    for (let i = 0; i < rawData.length; i++) {
+      const row: any = rawData[i]
+      try {
+        // 获取 EMG 和 SKU 列
+        const emgSku = row['EMG'] || row['事业部商品编码']
+        const sku = row['SKU'] || row['平台商品编码']
+        if (!emgSku || String(emgSku).trim() === '') throw new BadRequestException('EMG 不能为空')
+        if (!sku || String(sku).trim() === '') throw new BadRequestException('SKU 不能为空')
+        const emgSkuValue = String(emgSku).trim()
+        const skuValue = String(sku).trim()
+
+        // 使用 upsert 操作，基于 emgSku 作为唯一键
+        await this.prisma.emgSkuMapping.upsert({
+          where: { emgSku: emgSkuValue },
+          update: { sku: skuValue },
+          create: { emgSku: emgSkuValue, sku: skuValue },
+        })
+        successCount++
+      } catch (error) {
+        failCount++
+        const errorMsg = error instanceof Error ? error.message : String(error)
+        errors.push(`第 ${i + 2} 行导入失败: ${errorMsg}`)
+      }
+    }
+
+    return {
+      success: successCount,
+      fail: failCount,
+      errors: errors.slice(0, 20),
+    }
+  }
 }

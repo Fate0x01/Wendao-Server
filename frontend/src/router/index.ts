@@ -1,5 +1,5 @@
 import { lazy } from 'react';
-import { DashboardIcon, HistoryIcon, SettingIcon, StoreIcon, UsergroupIcon } from 'tdesign-icons-react';
+import { DashboardIcon, HistoryIcon, SettingIcon, StoreIcon, TeahouseIcon, UsergroupIcon } from 'tdesign-icons-react';
 import { BaseRole } from 'types/enum';
 import IRouter from './interface/route';
 import otherRoutes from './modules/others';
@@ -96,6 +96,33 @@ const routes: IRouter[] = [
         Component: lazy(() => import('pages/Business/GoodsManager')),
         meta: {
           title: '商品管理',
+        },
+      },
+    ],
+  },
+  {
+    path: '/stock',
+    meta: {
+      title: '库存管理',
+      Icon: TeahouseIcon,
+      allowRole: ['SUPER_ADMIN'],
+      allowPermission: ['stock:list-jing-cang-stock', 'stock:set-reorder-threshold'],
+    },
+    children: [
+      {
+        path: 'jingcang',
+        Component: lazy(() => import('pages/Business/StockManager/JingCang')),
+        meta: {
+          title: '京仓库存',
+          allowRole: ['SUPER_ADMIN'],
+          allowPermission: ['stock:list-jing-cang-stock', 'stock:set-reorder-threshold'],
+        },
+      },
+      {
+        path: 'yuncang',
+        Component: lazy(() => import('pages/Business/StockManager/YunCang')),
+        meta: {
+          title: '云仓库存',
         },
       },
     ],

@@ -1,14 +1,14 @@
 /// 商品信息
 model Goods {
-    id                      String          @id @default(cuid())
+    id                      String              @id @default(cuid())
     /// 关联部门
     departmentId            String
-    department              Department?     @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+    department              Department?         @relation(fields: [departmentId], references: [id], onDelete: Cascade)
     departmentName          String // 反范式的冗余字段，用于存储部门名称
     /// 店铺名称 
     shopName                String?
     /// SKU字符串数组
-    sku                     String          @unique
+    sku                     String              @unique
     /// 负责人
     responsiblePerson       String?
     /// 货架号
@@ -22,33 +22,35 @@ model Goods {
     /// 合格证图
     certificateImageUrl     String?
     /// 进货成本
-    purchaseCost            Decimal?        @default(0) @db.Decimal(10, 2)
+    purchaseCost            Decimal?            @default(0) @db.Decimal(10, 2)
     /// 最低售价
-    minSalePrice            Decimal?        @default(0) @db.Decimal(10, 2)
+    minSalePrice            Decimal?            @default(0) @db.Decimal(10, 2)
     /// 快递费用
-    expressFee              Decimal?        @default(0) @db.Decimal(10, 2)
+    expressFee              Decimal?            @default(0) @db.Decimal(10, 2)
     /// 耗材费
-    materialCost            Decimal?        @default(0) @db.Decimal(10, 2)
+    materialCost            Decimal?            @default(0) @db.Decimal(10, 2)
     /// 销售出库费
-    salesOutboundFee        Decimal?        @default(0) @db.Decimal(10, 2)
+    salesOutboundFee        Decimal?            @default(0) @db.Decimal(10, 2)
     /// TC 到仓费
-    tcToWarehouseFee        Decimal?        @default(0) @db.Decimal(10, 2)
+    tcToWarehouseFee        Decimal?            @default(0) @db.Decimal(10, 2)
     /// 人工打包费
-    manualPackingFee        Decimal?        @default(0) @db.Decimal(10, 2)
+    manualPackingFee        Decimal?            @default(0) @db.Decimal(10, 2)
     /// 交易服务费比例
-    transactionServiceRatio Decimal?        @default(0) @db.Decimal(10, 2)
+    transactionServiceRatio Decimal?            @default(0) @db.Decimal(10, 2)
     /// 佣金比例
-    commissionRatio         Decimal?        @default(0) @db.Decimal(10, 2)
+    commissionRatio         Decimal?            @default(0) @db.Decimal(10, 2)
     /// 平台推广比例
-    platformPromotionRatio  Decimal?        @default(0) @db.Decimal(10, 2)
+    platformPromotionRatio  Decimal?            @default(0) @db.Decimal(10, 2)
     /// 货损比例
-    lossRatio               Decimal?        @default(0) @db.Decimal(10, 2)
+    lossRatio               Decimal?            @default(0) @db.Decimal(10, 2)
     /// 额外成本
     extraCosts              ExtraCost[]
     /// 变动日志
     changeLogs              GoodChangeLog[]
-    createdAt               DateTime        @default(now())
-    updatedAt               DateTime        @updatedAt()
+    /// 京仓库存信息
+    jingCangStockInfos      JingCangStockInfo[]
+    createdAt               DateTime            @default(now())
+    updatedAt               DateTime            @updatedAt()
 
     @@map("system_goods")
 }
@@ -84,4 +86,41 @@ model GoodChangeLog {
     createdAt DateTime @default(now())
 
     @@map("system_goods_change_logs")
+}
+
+/// EMG/SKU 映射模型（支持部门隔离）
+model EmgSkuMapping {
+    id     String @id @default(cuid())
+    /// EMG SKU
+    emgSku String @unique
+    /// 平台SKU
+    sku    String @unique
+
+    @@map("system_emg_sku_mapping")
+}
+
+/// 京仓库存信息模型
+model JingCangStockInfo {
+    id                   String   @id @default(cuid())
+    /// 关联商品ID
+    goodId               String
+    /// 关联商品
+    good                 Goods    @relation(fields: [goodId], references: [id], onDelete: Cascade)
+    /// 所属库房
+    warehouse            String
+    /// 库存数量
+    stockQuantity        Int
+    /// 日销量
+    dailySalesQuantity   Int
+    /// 月销量
+    monthlySalesQuantity Int
+    /// 补货预警阈值
+    reorderThreshold     Int      @default(0)
+    /// 创建时间
+    createdAt            DateTime @default(now())
+    /// 更新时间
+    updatedAt            DateTime @updatedAt()
+
+    @@unique([goodId, warehouse])
+    @@map("system_jing_cang_stock_info")
 }

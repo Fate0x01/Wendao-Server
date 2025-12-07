@@ -14,6 +14,7 @@ import type {
   CreateUserDto,
   DeptQueryDto,
   GoodsQueryDto,
+  JingCangStockQueryDto,
   LinkMemberDto,
   LoginDto,
   MembersQueryDto,
@@ -21,6 +22,7 @@ import type {
   RemoveMemberDto,
   RoleQueryDto,
   SetLeadersDto,
+  SetReorderThresholdDto,
   SysAuthControllerGetUserInfo200,
   SysAuthControllerGetUserPermissions200,
   SysAuthControllerLogin200,
@@ -41,6 +43,8 @@ import type {
   SysGoodsControllerDeleteGoods200,
   SysGoodsControllerGetChangeLogs200,
   SysGoodsControllerGetGoodsList200,
+  SysGoodsControllerImportEmgSkuMapping200,
+  SysGoodsControllerImportEmgSkuMappingBody,
   SysGoodsControllerImportGoods200,
   SysGoodsControllerImportGoodsBody,
   SysGoodsControllerUpdateGoods200,
@@ -50,6 +54,10 @@ import type {
   SysRoleControllerGetRole200,
   SysRoleControllerGetRoles200,
   SysRoleControllerUpdateRole200,
+  SysStockControllerImportJingCangStock200,
+  SysStockControllerImportJingCangStockBody,
+  SysStockControllerListJingCangStock200,
+  SysStockControllerSetReorderThreshold200,
   SysUserControllerCreateUser200,
   SysUserControllerDeleteUser200,
   SysUserControllerGetUser200,
@@ -509,7 +517,67 @@ const sysGoodsControllerDeleteExtraCost = (
       options);
     }
   
-return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost}};
+/**
+ * @summary 导入 EMG/SKU 映射
+ */
+const sysGoodsControllerImportEmgSkuMapping = (
+    sysGoodsControllerImportEmgSkuMappingBody: SysGoodsControllerImportEmgSkuMappingBody,
+ options?: SecondParameter<typeof customInstance<SysGoodsControllerImportEmgSkuMapping200>>,) => {const formData = new FormData();
+formData.append(`file`, sysGoodsControllerImportEmgSkuMappingBody.file)
+
+      return customInstance<SysGoodsControllerImportEmgSkuMapping200>(
+      {url: `/sys-goods/import-emg-sku-mapping`, method: 'POST',
+      headers: {'Content-Type': 'multipart/form-data', },
+       data: formData
+    },
+      options);
+    }
+  
+/**
+ * @summary 导入京仓库存信息
+ */
+const sysStockControllerImportJingCangStock = (
+    sysStockControllerImportJingCangStockBody: SysStockControllerImportJingCangStockBody,
+ options?: SecondParameter<typeof customInstance<SysStockControllerImportJingCangStock200>>,) => {const formData = new FormData();
+formData.append(`file`, sysStockControllerImportJingCangStockBody.file)
+
+      return customInstance<SysStockControllerImportJingCangStock200>(
+      {url: `/sys-stock/import-jing-cang-stock`, method: 'POST',
+      headers: {'Content-Type': 'multipart/form-data', },
+       data: formData
+    },
+      options);
+    }
+  
+/**
+ * @summary 查询京仓库存信息列表（按商品分组）
+ */
+const sysStockControllerListJingCangStock = (
+    jingCangStockQueryDto: JingCangStockQueryDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerListJingCangStock200>>,) => {
+      return customInstance<SysStockControllerListJingCangStock200>(
+      {url: `/sys-stock/list-jing-cang-stock`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: jingCangStockQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 设置补货预警阈值
+ */
+const sysStockControllerSetReorderThreshold = (
+    setReorderThresholdDto: SetReorderThresholdDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerSetReorderThreshold200>>,) => {
+      return customInstance<SysStockControllerSetReorderThreshold200>(
+      {url: `/sys-stock/set-reorder-threshold`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: setReorderThresholdDto
+    },
+      options);
+    }
+  
+return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost,sysGoodsControllerImportEmgSkuMapping,sysStockControllerImportJingCangStock,sysStockControllerListJingCangStock,sysStockControllerSetReorderThreshold}};
 export type SysAuthControllerLoginResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerLogin']>>>
 export type SysAuthControllerRefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerRefresh']>>>
 export type SysAuthControllerGetUserInfoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerGetUserInfo']>>>
@@ -543,3 +611,7 @@ export type SysGoodsControllerDeleteGoodsResult = NonNullable<Awaited<ReturnType
 export type SysGoodsControllerGetChangeLogsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerGetChangeLogs']>>>
 export type SysGoodsControllerAddExtraCostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerAddExtraCost']>>>
 export type SysGoodsControllerDeleteExtraCostResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerDeleteExtraCost']>>>
+export type SysGoodsControllerImportEmgSkuMappingResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerImportEmgSkuMapping']>>>
+export type SysStockControllerImportJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerImportJingCangStock']>>>
+export type SysStockControllerListJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerListJingCangStock']>>>
+export type SysStockControllerSetReorderThresholdResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerSetReorderThreshold']>>>

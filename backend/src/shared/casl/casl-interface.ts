@@ -1,6 +1,6 @@
 import { PureAbility } from '@casl/ability'
 import { PrismaQuery, Subjects } from '@casl/prisma'
-import { Department, GoodChangeLog, Goods, Permission, Role, User } from '@prisma/client'
+import { Department, GoodChangeLog, Goods, JingCangStockInfo, Permission, Role, User } from '@prisma/client'
 
 export enum Actions {
   Manage = 'manage',
@@ -17,6 +17,7 @@ export type CaslModels = {
   Department: Department
   Goods: Goods
   GoodChangeLog: GoodChangeLog
+  JingCangStockInfo: JingCangStockInfo
 }
 
 export type AppAbility = PureAbility<[Actions, 'all' | Subjects<CaslModels>], PrismaQuery>

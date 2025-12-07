@@ -89,4 +89,14 @@ export class SysGoodsController {
     const extraCost = await this.sysGoodsService.removeExtraCost(id)
     return ResultData.ok(extraCost)
   }
+
+  @Post('import-emg-sku-mapping')
+  @ApiOperation({ summary: '导入 EMG/SKU 映射' })
+  @UseFileUpload({ description: '导入 EMG/SKU 映射 Excel' })
+  @ApiResult(GoodsImportResultEntity)
+  @Permission({ group: '商品管理', name: '导入 EMG/SKU 映射', model: 'Goods', code: 'goods:import-emg-sku-mapping' })
+  async importEmgSkuMapping(@GetFile({ fileType: 'excel' }) file: Express.Multer.File) {
+    const result = await this.sysGoodsService.importEmgSkuMapping(file)
+    return ResultData.ok(result)
+  }
 }

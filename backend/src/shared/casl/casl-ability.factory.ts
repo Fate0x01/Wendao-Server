@@ -34,6 +34,9 @@ export default function defineAbilityFor(user: ReqUser) {
       case 'GoodChangeLog':
         handleGoodChangeLogAbility(abilityBuilder, user)
         break
+      case 'JingCangStockInfo':
+        handleJingCangStockAbility(abilityBuilder, user)
+        break
       default:
         break
     }
@@ -205,5 +208,47 @@ function handleGoodChangeLogAbility(builder: AbilityBuilder<AppAbility>, user: R
   // 部门成员
   if (memberDeptIds.length > 0) {
     builder.can(Actions.Manage, 'GoodChangeLog', { good: { departmentId: { in: memberDeptIds } } })
+  }
+}
+
+/**
+ * 处理京仓库存信息权限
+ * 权限规则：
+ * - 一级部门负责人：可管理本部门及其下属二级部门的商品对应的京仓库存
+ * - 二级部门负责人：可管理本二级部门的商品对应的京仓库存
+ * - 部门成员：仅可管理本部门的商品对应的京仓库存
+ * @param builder
+ * @param user
+ */
+function handleJingCangStockAbility(builder: AbilityBuilder<AppAbility>, user: ReqUser) {
+  const leadingDepts = user.leadingDepartments ?? []
+  const memberDeptIds = user.departments?.map((d) => d.id) ?? []
+  const leadingLevel1DeptIds: string[] = []
+  const leadingLevel2DeptIds: string[] = []
+
+  for (const dept of leadingDepts) {
+    if (dept.parentId === null) {
+      leadingLevel1DeptIds.push(dept.id)
+    } else {
+      leadingLevel2DeptIds.push(dept.id)
+    }
+  }
+
+  // 一级部门负责人
+  if (leadingLevel1DeptIds.length > 0) {
+    // 管理本部门
+    builder.can(Actions.Manage, 'JingCangStockInfo', { good: { departmentId: { in: leadingLevel1DeptIds } } })
+    // 管理下属二级部门
+    builder.can(Actions.Manage, 'JingCangStockInfo', { good: { department: { parentId: { in: leadingLevel1DeptIds } } } })
+  }
+
+  // 二级部门负责人
+  if (leadingLevel2DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'JingCangStockInfo', { good: { departmentId: { in: leadingLevel2DeptIds } } })
+  }
+
+  // 部门成员
+  if (memberDeptIds.length > 0) {
+    builder.can(Actions.Manage, 'JingCangStockInfo', { good: { departmentId: { in: memberDeptIds } } })
   }
 }

@@ -145,10 +145,15 @@ export function UseFileDownload(options: DownloadOptions = {}) {
     UseInterceptors(FileDownloadInterceptor),
     ApiProduces(contentType),
     ApiResponse({
-      schema: {
-        type: 'String',
-        format: 'binary',
-        description: options.description || '下载文件',
+      status: 200,
+      description: options.description || '下载文件',
+      content: {
+        [contentType]: {
+          schema: {
+            type: 'string',
+            format: 'binary',
+          },
+        },
       },
     }),
   )

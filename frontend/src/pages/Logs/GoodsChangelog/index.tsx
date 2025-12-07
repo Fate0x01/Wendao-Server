@@ -9,7 +9,7 @@ import React, { memo, useCallback, useMemo, useRef } from 'react';
 import api from 'services';
 import type { ChangeLogEntity, ChangeLogQueryDto } from 'services/generated/model';
 import { DownloadIcon } from 'tdesign-icons-react';
-import { Button, Card, Col, DateRangePicker, Form, Input, MessagePlugin, Row, Table, Tag } from 'tdesign-react';
+import { Button, Card, Col, DateRangePicker, Form, Input, MessagePlugin, Row, Table } from 'tdesign-react';
 import type { FormInstanceFunctions } from 'tdesign-react/es/form/type';
 import type { PrimaryTableCol } from 'tdesign-react/es/table';
 
@@ -21,7 +21,7 @@ const columns: PrimaryTableCol<ChangeLogEntity>[] = [
   {
     title: '店铺名称',
     colKey: 'good.shopName',
-    width: 140,
+    width: 200,
     ellipsis: true,
     cell: ({ row }) => row.good?.shopName || '-',
   },
@@ -30,24 +30,11 @@ const columns: PrimaryTableCol<ChangeLogEntity>[] = [
     colKey: 'good.sku',
     width: 180,
     ellipsis: true,
-    cell: ({ row }) =>
-      row.good?.sku?.length ? (
-        <div className='flex flex-wrap gap-1'>
-          {row.good.sku.slice(0, 2).map((s: string, i: number) => (
-            <Tag key={i} theme='primary' variant='light' size='small'>
-              {s}
-            </Tag>
-          ))}
-          {row.good.sku.length > 2 && <Tag size='small'>+{row.good.sku.length - 2}</Tag>}
-        </div>
-      ) : (
-        '-'
-      ),
   },
   {
     title: '货架号',
     colKey: 'good.shelfNumber',
-    width: 100,
+    width: 200,
     cell: ({ row }) => row.good?.shelfNumber || '-',
   },
   { title: '操作人', colKey: 'username', width: 120 },

@@ -235,23 +235,9 @@ export class SysStockService {
 
     const distinctGoodIds = filteredGoodIds
 
-    // 2. 查询符合条件的商品总数（有库存信息且符合筛选条件）
+    // 2. 查询所有符合条件的商品（不分页，用于计算统计信息和排序）
     // 注意：如果筛选了 isLowStock，distinctGoodIds 已经包含了过滤后的商品ID
-    const totalGoods = await this.prisma.goods.count({
-      where: {
-        AND: [
-          {
-            id: { in: distinctGoodIds },
-            departmentId: query.departmentId || undefined,
-            sku: query.skuKeyword ? { contains: query.skuKeyword } : undefined,
-          },
-          accessibleBy(ability).Goods,
-        ],
-      },
-    })
-
-    // 3. 分页查询符合条件的商品
-    const goods = await this.prisma.goods.findMany({
+    const allGoods = await this.prisma.goods.findMany({
       where: {
         AND: [
           {
@@ -273,13 +259,13 @@ export class SysStockService {
         spec: true,
         purchaseCost: true,
       },
-      skip: (query.current - 1) * query.pageSize,
-      take: query.pageSize,
-      orderBy: { createdAt: 'desc' },
     })
 
-    // 4. 批量查询这些商品的库存信息（返回所有库存信息，不进行过滤）
-    const goodIds = goods.map((good) => good.id)
+    // 查询符合条件的商品总数
+    const totalGoods = allGoods.length
+
+    // 3. 批量查询这些商品的库存信息（返回所有库存信息，不进行过滤）
+    const goodIds = allGoods.map((good) => good.id)
     const stockInfos = await this.prisma.jingCangStockInfo.findMany({
       where: {
         goodId: { in: goodIds },
@@ -288,7 +274,7 @@ export class SysStockService {
       orderBy: { warehouse: 'asc' },
     })
 
-    // 5. 按商品分组并计算统计信息
+    // 4. 按商品分组并计算统计信息
     const goodsMap = new Map<
       string,
       {
@@ -315,7 +301,7 @@ export class SysStockService {
     >()
 
     // 初始化商品分组
-    for (const good of goods) {
+    for (const good of allGoods) {
       goodsMap.set(good.id, {
         goodId: good.id,
         departmentName: good.departmentName,
@@ -379,8 +365,8 @@ export class SysStockService {
       }
     }
 
-    // 6. 转换为数组并计算统计信息，过滤掉没有库存信息的商品（当筛选时）
-    const rows = Array.from(goodsMap.values())
+    // 5. 转换为数组并计算统计信息，过滤掉没有库存信息的商品（当筛选时）
+    let rows = Array.from(goodsMap.values())
       .filter((group) => {
         // 如果筛选了 isLowStock，过滤掉没有符合条件库存记录的商品
         if (query.isLowStock === true || query.isLowStock === false) {
@@ -412,7 +398,46 @@ export class SysStockService {
         }
       })
 
-    return { rows, total: totalGoods }
+    // 6. 根据排序字段和排序方向进行排序
+    if (query.sortField && query.sortOrder) {
+      rows.sort((a, b) => {
+        let aValue: number
+        let bValue: number
+
+        switch (query.sortField) {
+          case 'totalStockQuantity':
+            aValue = a.totalStockQuantity
+            bValue = b.totalStockQuantity
+            break
+          case 'totalDailySalesQuantity':
+            aValue = a.totalDailySalesQuantity
+            bValue = b.totalDailySalesQuantity
+            break
+          case 'totalMonthlySalesQuantity':
+            aValue = a.totalMonthlySalesQuantity
+            bValue = b.totalMonthlySalesQuantity
+            break
+          case 'totalPurchaseCostValue':
+            // 处理 null 值，null 值排在最后
+            aValue = a.totalPurchaseCostValue ?? -Infinity
+            bValue = b.totalPurchaseCostValue ?? -Infinity
+            break
+          default:
+            return 0
+        }
+
+        if (aValue === bValue) return 0
+        const comparison = aValue > bValue ? 1 : -1
+        return query.sortOrder === 'asc' ? comparison : -comparison
+      })
+    }
+
+    // 7. 分页处理
+    const startIndex = (query.current - 1) * query.pageSize
+    const endIndex = startIndex + query.pageSize
+    const paginatedRows = rows.slice(startIndex, endIndex)
+
+    return { rows: paginatedRows, total: rows.length }
   }
 
   /**

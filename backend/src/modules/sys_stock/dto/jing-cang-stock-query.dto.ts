@@ -1,6 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger'
 import { Type } from 'class-transformer'
-import { IsBoolean, IsNumber, IsOptional, IsString, Min } from 'class-validator'
+import { IsBoolean, IsEnum, IsNumber, IsOptional, IsString, Min } from 'class-validator'
 
 export class JingCangStockQueryDto {
   @ApiProperty({ description: '当前页', default: 1, type: Number })
@@ -35,4 +35,18 @@ export class JingCangStockQueryDto {
   @Type(() => Boolean)
   @IsBoolean({ message: '是否达到补货预警必须为布尔值' })
   isLowStock?: boolean
+
+  @ApiPropertyOptional({ description: '排序字段', enum: ['totalStockQuantity', 'totalDailySalesQuantity', 'totalMonthlySalesQuantity', 'totalPurchaseCostValue'], type: String })
+  @IsOptional()
+  @IsString({ message: '排序字段必须为字符串' })
+  @IsEnum(['totalStockQuantity', 'totalDailySalesQuantity', 'totalMonthlySalesQuantity', 'totalPurchaseCostValue'], {
+    message: '排序字段必须是 totalStockQuantity、totalDailySalesQuantity、totalMonthlySalesQuantity 或 totalPurchaseCostValue 之一',
+  })
+  sortField?: 'totalStockQuantity' | 'totalDailySalesQuantity' | 'totalMonthlySalesQuantity' | 'totalPurchaseCostValue'
+
+  @ApiPropertyOptional({ description: '排序方向', enum: ['asc', 'desc'], type: String })
+  @IsOptional()
+  @IsString({ message: '排序方向必须为字符串' })
+  @IsEnum(['asc', 'desc'], { message: '排序方向必须是 asc 或 desc' })
+  sortOrder?: 'asc' | 'desc'
 }

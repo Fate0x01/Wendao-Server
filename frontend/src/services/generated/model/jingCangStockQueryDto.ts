@@ -5,6 +5,8 @@
  * Nest-Starter API 文档
  * OpenAPI spec version: 1.0
  */
+import type { JingCangStockQueryDtoSortField } from './jingCangStockQueryDtoSortField';
+import type { JingCangStockQueryDtoSortOrder } from './jingCangStockQueryDtoSortOrder';
 
 export interface JingCangStockQueryDto {
   /** 当前页 */
@@ -19,4 +21,8 @@ export interface JingCangStockQueryDto {
   warehouse?: string;
   /** 是否达到补货预警 */
   isLowStock?: boolean;
+  /** 排序字段 */
+  sortField?: JingCangStockQueryDtoSortField;
+  /** 排序方向 */
+  sortOrder?: JingCangStockQueryDtoSortOrder;
 }

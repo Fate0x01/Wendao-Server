@@ -25,6 +25,8 @@ export * from './goodsQueryDto';
 export * from './jingCangStockGroupEntity';
 export * from './jingCangStockInfoEntity';
 export * from './jingCangStockQueryDto';
+export * from './jingCangStockQueryDtoSortField';
+export * from './jingCangStockQueryDtoSortOrder';
 export * from './jingCangStockStatisticsEntity';
 export * from './linkMemberDto';
 export * from './loginDto';

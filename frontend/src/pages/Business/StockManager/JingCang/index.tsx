@@ -30,7 +30,7 @@ import {
   Tag,
 } from 'tdesign-react';
 import type { FormInstanceFunctions } from 'tdesign-react/es/form/type';
-import type { PrimaryTableCol } from 'tdesign-react/es/table';
+import type { PrimaryTableCol, SortInfo } from 'tdesign-react/es/table';
 import ImportResultModal from './components/ImportResultModal';
 import ReorderThresholdModal from './components/ReorderThresholdModal';
 
@@ -106,12 +106,19 @@ const JingCangStockManager: React.FC = () => {
   const [statistics, setStatistics] = useState<JingCangStockStatisticsEntity | null>(null);
   const [statisticsLoading, setStatisticsLoading] = useState(false);
 
-  // 默认筛选条件（普通成员自动注入部门ID）
+  // 排序状态（单列排序，使用 SortInfo）
+  const [sort, setSort] = useState<SortInfo | undefined>(undefined);
+
+  // 默认筛选条件（普通成员自动注入部门ID，默认按总库存数量降序排序）
   const defaultFilters = useMemo(() => {
+    const filters: Partial<JingCangStockQueryDto> = {
+      sortField: 'totalStockQuantity',
+      sortOrder: 'desc',
+    };
     if (!isLeader && userDeptId) {
-      return { departmentId: userDeptId };
+      filters.departmentId = userDeptId;
     }
-    return {};
+    return filters;
   }, [isLeader, userDeptId]);
 
   // 表格数据管理
@@ -169,6 +176,22 @@ const JingCangStockManager: React.FC = () => {
       fetchStatistics();
     }
   }, [filters, getStatisticsQuery, fetchStatistics]);
+
+  // 同步 filters 中的排序状态到 sort state（初始化时设置默认排序）
+  useEffect(() => {
+    if (filters.sortField && filters.sortOrder) {
+      setSort({
+        sortBy: filters.sortField,
+        descending: filters.sortOrder === 'desc',
+      });
+    } else {
+      // 如果没有排序参数，使用默认排序
+      setSort({
+        sortBy: 'totalStockQuantity',
+        descending: true,
+      });
+    }
+  }, [filters.sortField, filters.sortOrder]);
 
   // 下载模板
   const handleDownloadTemplate = useCallback(() => {
@@ -305,8 +328,52 @@ const JingCangStockManager: React.FC = () => {
   // 搜索表单重置
   const handleSearchReset = useCallback(() => {
     searchFormRef.current?.reset?.();
+    // 重置时恢复默认排序
+    setSort({
+      sortBy: 'totalStockQuantity',
+      descending: true,
+    });
     handleReset();
   }, [handleReset]);
+
+  // 排序变化处理
+  const handleSortChange = useCallback(
+    (newSort: SortInfo | SortInfo[]) => {
+      // 单列排序，取第一个元素（如果是数组）或直接使用
+      const sortInfo = Array.isArray(newSort) ? newSort[0] : newSort;
+      setSort(sortInfo);
+
+      // 更新筛选条件中的排序参数
+      const sortFieldMap: Record<
+        string,
+        'totalStockQuantity' | 'totalDailySalesQuantity' | 'totalMonthlySalesQuantity' | 'totalPurchaseCostValue'
+      > = {
+        totalStockQuantity: 'totalStockQuantity',
+        totalDailySalesQuantity: 'totalDailySalesQuantity',
+        totalMonthlySalesQuantity: 'totalMonthlySalesQuantity',
+        totalPurchaseCostValue: 'totalPurchaseCostValue',
+      };
+
+      if (sortInfo && sortInfo.sortBy) {
+        const sortField = sortFieldMap[sortInfo.sortBy];
+        if (sortField) {
+          handleSearch({
+            sortField,
+            sortOrder: sortInfo.descending ? 'desc' : 'asc',
+            current: 1, // 排序时重置到第一页
+          });
+        }
+      } else {
+        // 取消排序
+        handleSearch({
+          sortField: undefined,
+          sortOrder: undefined,
+          current: 1,
+        });
+      }
+    },
+    [handleSearch],
+  );
 
   // 展开行变化处理
   const handleExpandChange = useCallback((keys: (string | number)[]) => {
@@ -402,24 +469,32 @@ const JingCangStockManager: React.FC = () => {
         colKey: 'totalStockQuantity',
         width: 120,
         align: 'right',
+        sortType: 'all',
+        sorter: true,
       },
       {
         title: '总日销量',
         colKey: 'totalDailySalesQuantity',
         width: 120,
         align: 'right',
+        sortType: 'all',
+        sorter: true,
       },
       {
         title: '总月销量',
         colKey: 'totalMonthlySalesQuantity',
         width: 120,
         align: 'right',
+        sortType: 'all',
+        sorter: true,
       },
       {
         title: '进货成本总货值',
         colKey: 'totalPurchaseCostValue',
         width: 150,
         align: 'right',
+        sortType: 'all',
+        sorter: true,
         cell: ({ row }) => {
           if (row.totalPurchaseCostValue === null || row.totalPurchaseCostValue === undefined) {
             return <span className='text-gray-400'>-</span>;
@@ -639,6 +714,8 @@ const JingCangStockManager: React.FC = () => {
           expandedRowKeys={expandedRowKeys}
           onExpandChange={handleExpandChange}
           expandedRow={expandedRowRender}
+          sort={sort}
+          onSortChange={handleSortChange}
           pagination={{
             current: filters.current,
             pageSize: filters.pageSize,

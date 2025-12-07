@@ -80,9 +80,9 @@ function CrudPage<
         await api.delete(record.id);
         MessagePlugin.success('删除成功');
         refresh();
-      } catch (error) {
+      } catch (error: any) {
         console.error('删除失败:', error);
-        MessagePlugin.error('删除失败');
+        MessagePlugin.error(error?.msg || '删除失败');
       }
     },
     [api.delete, refresh],

@@ -30,9 +30,9 @@ export function useCrudTable<TData, TFilters extends PaginationParams = Paginati
       const res = await fetchApi(filters);
       setList(res.data?.list || []);
       setTotal(res.data?.total || 0);
-    } catch (error) {
+    } catch (error: any) {
       console.error('获取列表数据失败:', error);
-      MessagePlugin.error('获取列表数据失败');
+      MessagePlugin.error(error?.msg || '获取列表数据失败');
     } finally {
       setLoading(false);
     }

@@ -45,9 +45,7 @@ export function useCrudModal<TData, TCreateDto = unknown, TUpdateDto = unknown>(
 
   // 提交处理
   const handleSubmit = useCallback(
-    async <TFormValues>(
-      transformFn?: (values: TFormValues, isEdit: boolean, editData: TData | null) => unknown,
-    ) => {
+    async <TFormValues>(transformFn?: (values: TFormValues, isEdit: boolean, editData: TData | null) => unknown) => {
       // 表单校验
       const validateResult = await formRef.current?.validate?.();
       if (validateResult !== true) return;
@@ -69,9 +67,10 @@ export function useCrudModal<TData, TCreateDto = unknown, TUpdateDto = unknown>(
         }
         close();
         onSuccess?.();
-      } catch (error) {
+      } catch (error: any) {
         console.error('提交失败:', error);
-        MessagePlugin.error(isEdit ? errorMessage.update || '更新失败' : errorMessage.create || '创建失败');
+        const defaultMsg = isEdit ? errorMessage.update || '更新失败' : errorMessage.create || '创建失败';
+        MessagePlugin.error(error?.msg || defaultMsg);
       } finally {
         setLoading(false);
       }
@@ -93,4 +92,3 @@ export function useCrudModal<TData, TCreateDto = unknown, TUpdateDto = unknown>(
 }
 
 export default useCrudModal;
-

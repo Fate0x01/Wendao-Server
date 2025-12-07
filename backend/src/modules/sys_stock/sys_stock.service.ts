@@ -416,6 +416,126 @@ export class SysStockService {
   }
 
   /**
+   * 统计京仓库存信息
+   * @param query 查询参数
+   * @returns 统计数据（总日销量、总月销量、进货成本总货值）
+   */
+  async getJingCangStockStatistics(query: JingCangStockQueryDto) {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 1. 先查询有库存信息的商品ID列表（用于过滤）
+    const allStockInfos = await this.prisma.jingCangStockInfo.findMany({
+      where: {},
+      select: {
+        goodId: true,
+        stockQuantity: true,
+        reorderThreshold: true,
+        warehouse: true,
+      },
+    })
+
+    // 如果筛选是否达到补货预警，需要过滤出符合条件的商品
+    let filteredGoodIds: string[]
+    if (query.isLowStock === true) {
+      const filteredInfos = query.warehouse ? allStockInfos.filter((info) => info.warehouse === query.warehouse) : allStockInfos
+      const lowStockGoodIds = new Set(filteredInfos.filter((info) => info.stockQuantity <= info.reorderThreshold).map((info) => info.goodId))
+      filteredGoodIds = Array.from(lowStockGoodIds)
+    } else if (query.isLowStock === false) {
+      const goodStockMap = new Map<string, Array<{ stockQuantity: number; reorderThreshold: number; warehouse: string }>>()
+      for (const info of allStockInfos) {
+        if (!goodStockMap.has(info.goodId)) {
+          goodStockMap.set(info.goodId, [])
+        }
+        goodStockMap.get(info.goodId)!.push({
+          stockQuantity: info.stockQuantity,
+          reorderThreshold: info.reorderThreshold,
+          warehouse: info.warehouse,
+        })
+      }
+
+      const notLowStockGoodIds: string[] = []
+      for (const [goodId, stockList] of goodStockMap.entries()) {
+        const checkList = query.warehouse ? stockList.filter((s) => s.warehouse === query.warehouse) : stockList
+        if (checkList.length === 0) continue
+        const allNotLowStock = checkList.every((s) => s.stockQuantity > s.reorderThreshold)
+        if (allNotLowStock) {
+          notLowStockGoodIds.push(goodId)
+        }
+      }
+      filteredGoodIds = notLowStockGoodIds
+    } else {
+      const filteredInfos = query.warehouse ? allStockInfos.filter((info) => info.warehouse === query.warehouse) : allStockInfos
+      filteredGoodIds = Array.from(new Set(filteredInfos.map((info) => info.goodId)))
+    }
+
+    // 2. 查询所有符合条件的商品（不分页，用于统计）
+    const goods = await this.prisma.goods.findMany({
+      where: {
+        AND: [
+          {
+            id: { in: filteredGoodIds },
+            departmentId: query.departmentId || undefined,
+            sku: query.skuKeyword ? { contains: query.skuKeyword } : undefined,
+          },
+          accessibleBy(ability).Goods,
+        ],
+      },
+      select: {
+        id: true,
+        purchaseCost: true,
+      },
+    })
+
+    const goodIds = goods.map((good) => good.id)
+    const goodsPurchaseCostMap = new Map<string, number>()
+    for (const good of goods) {
+      if (good.purchaseCost !== null) {
+        goodsPurchaseCostMap.set(good.id, Number(good.purchaseCost))
+      }
+    }
+
+    // 3. 查询这些商品的库存信息
+    const stockInfos = await this.prisma.jingCangStockInfo.findMany({
+      where: {
+        goodId: { in: goodIds },
+        warehouse: query.warehouse || undefined,
+      },
+    })
+
+    // 4. 根据筛选条件过滤库存信息并计算统计值
+    let totalDailySalesQuantity = 0
+    let totalMonthlySalesQuantity = 0
+    let totalPurchaseCostValue = 0
+
+    for (const stockInfo of stockInfos) {
+      // 根据 isLowStock 筛选条件决定是否计入统计
+      let shouldInclude = true
+      if (query.isLowStock === true) {
+        shouldInclude = stockInfo.stockQuantity <= stockInfo.reorderThreshold
+      } else if (query.isLowStock === false) {
+        shouldInclude = stockInfo.stockQuantity > stockInfo.reorderThreshold
+      }
+
+      if (shouldInclude) {
+        totalDailySalesQuantity += stockInfo.dailySalesQuantity
+        totalMonthlySalesQuantity += stockInfo.monthlySalesQuantity
+
+        const purchaseCost = goodsPurchaseCostMap.get(stockInfo.goodId)
+        if (purchaseCost !== undefined) {
+          totalPurchaseCostValue += purchaseCost * stockInfo.stockQuantity
+        }
+      }
+    }
+
+    return {
+      totalDailySalesQuantity,
+      totalMonthlySalesQuantity,
+      totalPurchaseCostValue,
+    }
+  }
+
+  /**
    * 设置补货预警阈值
    * @param dto 设置参数
    * @returns 更新后的库存信息

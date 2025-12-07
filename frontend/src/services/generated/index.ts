@@ -58,6 +58,7 @@ import type {
   SysStockControllerImportJingCangStockBody,
   SysStockControllerListJingCangStock200,
   SysStockControllerSetReorderThreshold200,
+  SysStockControllerStatisticsJingCangStock200,
   SysUserControllerCreateUser200,
   SysUserControllerDeleteUser200,
   SysUserControllerGetUser200,
@@ -564,6 +565,20 @@ const sysStockControllerListJingCangStock = (
     }
   
 /**
+ * @summary 统计京仓库存信息
+ */
+const sysStockControllerStatisticsJingCangStock = (
+    jingCangStockQueryDto: JingCangStockQueryDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerStatisticsJingCangStock200>>,) => {
+      return customInstance<SysStockControllerStatisticsJingCangStock200>(
+      {url: `/sys-stock/statistics-jing-cang-stock`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: jingCangStockQueryDto
+    },
+      options);
+    }
+  
+/**
  * @summary 设置补货预警阈值
  */
 const sysStockControllerSetReorderThreshold = (
@@ -577,7 +592,7 @@ const sysStockControllerSetReorderThreshold = (
       options);
     }
   
-return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost,sysGoodsControllerImportEmgSkuMapping,sysStockControllerImportJingCangStock,sysStockControllerListJingCangStock,sysStockControllerSetReorderThreshold}};
+return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost,sysGoodsControllerImportEmgSkuMapping,sysStockControllerImportJingCangStock,sysStockControllerListJingCangStock,sysStockControllerStatisticsJingCangStock,sysStockControllerSetReorderThreshold}};
 export type SysAuthControllerLoginResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerLogin']>>>
 export type SysAuthControllerRefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerRefresh']>>>
 export type SysAuthControllerGetUserInfoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerGetUserInfo']>>>
@@ -614,4 +629,5 @@ export type SysGoodsControllerDeleteExtraCostResult = NonNullable<Awaited<Return
 export type SysGoodsControllerImportEmgSkuMappingResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerImportEmgSkuMapping']>>>
 export type SysStockControllerImportJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerImportJingCangStock']>>>
 export type SysStockControllerListJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerListJingCangStock']>>>
+export type SysStockControllerStatisticsJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerStatisticsJingCangStock']>>>
 export type SysStockControllerSetReorderThresholdResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerSetReorderThreshold']>>>

@@ -9,6 +9,7 @@ import type {
   JingCangStockGroupEntity,
   JingCangStockInfoEntity,
   JingCangStockQueryDto,
+  JingCangStockStatisticsEntity,
   SetReorderThresholdDto,
   StockImportResultEntity,
 } from 'services/generated/model';
@@ -101,6 +102,10 @@ const JingCangStockManager: React.FC = () => {
   // 是否自动展开所有行
   const [autoExpand, setAutoExpand] = useState(false);
 
+  // 统计数据状态
+  const [statistics, setStatistics] = useState<JingCangStockStatisticsEntity | null>(null);
+  const [statisticsLoading, setStatisticsLoading] = useState(false);
+
   // 默认筛选条件（普通成员自动注入部门ID）
   const defaultFilters = useMemo(() => {
     if (!isLeader && userDeptId) {
@@ -124,6 +129,46 @@ const JingCangStockManager: React.FC = () => {
     defaultFilters,
     defaultPageSize: 10,
   });
+
+  // 从 filters 中提取查询参数（排除分页参数）
+  const getStatisticsQuery = useCallback((currentFilters: JingCangStockQueryDto): JingCangStockQueryDto => {
+    const { current, pageSize, ...queryParams } = currentFilters;
+    // 统计接口不需要分页参数，但类型定义要求包含，所以传入默认值
+    return {
+      ...queryParams,
+      current: 1,
+      pageSize: 10,
+    };
+  }, []);
+
+  // 获取统计数据
+  const fetchStatistics = useCallback(async () => {
+    const queryParams = getStatisticsQuery(filters);
+    setStatisticsLoading(true);
+    try {
+      const res = await api.sysStockControllerStatisticsJingCangStock(queryParams);
+      if (res.data) {
+        setStatistics(res.data);
+      }
+    } catch (error) {
+      console.error('获取统计数据失败:', error);
+    } finally {
+      setStatisticsLoading(false);
+    }
+  }, [filters, getStatisticsQuery]);
+
+  // 监听筛选条件变化（排除分页变化）时刷新统计数据
+  const previousQueryParamsRef = useRef<string>('');
+  useEffect(() => {
+    const queryParams = getStatisticsQuery(filters);
+    const queryParamsStr = JSON.stringify(queryParams);
+
+    // 只有当查询参数（排除分页）发生变化时才刷新统计数据
+    if (queryParamsStr !== previousQueryParamsRef.current) {
+      previousQueryParamsRef.current = queryParamsStr;
+      fetchStatistics();
+    }
+  }, [filters, getStatisticsQuery, fetchStatistics]);
 
   // 下载模板
   const handleDownloadTemplate = useCallback(() => {
@@ -150,9 +195,10 @@ const JingCangStockManager: React.FC = () => {
       if (res.data) {
         setImportResult(res.data);
         setImportResultVisible(true);
-        // 导入成功后刷新列表
+        // 导入成功后刷新列表和统计数据
         if (res.data.success > 0) {
           refresh();
+          fetchStatistics();
         }
       }
     } catch (error) {
@@ -164,7 +210,7 @@ const JingCangStockManager: React.FC = () => {
     } finally {
       setImportEmgSkuMappingLoading(false);
     }
-  }, [refresh]);
+  }, [refresh, fetchStatistics]);
 
   // 导入京仓库存信息
   const handleImport = useCallback(async () => {
@@ -181,9 +227,10 @@ const JingCangStockManager: React.FC = () => {
       if (res.data) {
         setImportResult(res.data);
         setImportResultVisible(true);
-        // 导入成功后刷新列表
+        // 导入成功后刷新列表和统计数据
         if (res.data.success > 0) {
           refresh();
+          fetchStatistics();
         }
       }
     } catch (error) {
@@ -195,7 +242,7 @@ const JingCangStockManager: React.FC = () => {
     } finally {
       setImportLoading(false);
     }
-  }, [refresh]);
+  }, [refresh, fetchStatistics]);
 
   // 关闭导入结果弹窗
   const handleCloseImportResult = useCallback(() => {
@@ -550,8 +597,35 @@ const JingCangStockManager: React.FC = () => {
 
       {/* 表格区域 */}
       <Card bordered={false}>
-        {/* 工具栏 */}
-        <CrudToolbar extraActions={toolbarExtraActions} />
+        {/* 工具栏和统计信息 */}
+        <div className='mb-4 flex items-center justify-between'>
+          <CrudToolbar extraActions={toolbarExtraActions} />
+          {/* 统计信息 */}
+          {statisticsLoading ? (
+            <div className='text-sm text-gray-400'>统计加载中...</div>
+          ) : statistics ? (
+            <div className='flex items-center gap-6 rounded-lg bg-gray-50 px-4 py-2'>
+              <div className='flex flex-col items-end border-r border-gray-200 pr-6'>
+                <span className='mb-1 text-xs text-gray-500'>总日销量</span>
+                <span className='text-lg font-semibold text-gray-800'>
+                  {statistics.totalDailySalesQuantity.toLocaleString()}
+                </span>
+              </div>
+              <div className='flex flex-col items-end border-r border-gray-200 pr-6'>
+                <span className='mb-1 text-xs text-gray-500'>总月销量</span>
+                <span className='text-lg font-semibold text-gray-800'>
+                  {statistics.totalMonthlySalesQuantity.toLocaleString()}
+                </span>
+              </div>
+              <div className='flex flex-col items-end'>
+                <span className='mb-1 text-xs text-gray-500'>进货成本总货值</span>
+                <span className='text-lg font-semibold text-blue-600'>
+                  ¥{statistics.totalPurchaseCostValue.toFixed(2)}
+                </span>
+              </div>
+            </div>
+          ) : null}
+        </div>
 
         {/* 表格 */}
         <Table

@@ -10,6 +10,7 @@ import { JingCangStockQueryDto } from './dto/jing-cang-stock-query.dto'
 import { SetReorderThresholdDto } from './dto/set-reorder-threshold.dto'
 import { JingCangStockGroupEntity } from './entities/jing-cang-stock-group.entity'
 import { JingCangStockInfoEntity } from './entities/jing-cang-stock-info.entity'
+import { JingCangStockStatisticsEntity } from './entities/jing-cang-stock-statistics.entity'
 import { StockImportResultEntity } from './entities/stock-import-result.entity'
 import { SysStockService } from './sys_stock.service'
 
@@ -40,6 +41,15 @@ export class SysStockController {
   async listJingCangStock(@Body() query: JingCangStockQueryDto) {
     const { rows, total } = await this.sysStockService.listJingCangStock(query)
     return ResultData.list(rows, total)
+  }
+
+  @Post('statistics-jing-cang-stock')
+  @ApiOperation({ summary: '统计京仓库存信息' })
+  @ApiResult(JingCangStockStatisticsEntity)
+  @Permission({ group: '库存管理', name: '统计京仓库存信息', model: 'JingCangStockInfo', code: 'stock:statistics-jing-cang-stock' })
+  async statisticsJingCangStock(@Body() query: JingCangStockQueryDto) {
+    const statistics = await this.sysStockService.getJingCangStockStatistics(query)
+    return ResultData.ok(statistics)
   }
 
   @Post('set-reorder-threshold')

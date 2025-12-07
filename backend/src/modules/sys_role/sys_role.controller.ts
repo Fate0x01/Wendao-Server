@@ -10,6 +10,7 @@ import { RoleQueryDto } from './dto/role-query.dto'
 import { UpdateRoleBodyDto } from './dto/update-role-body.dto'
 import { PermissionEntity } from './entities/permission.entity'
 import { RoleEntity } from './entities/role.entity'
+import { SysRoleService } from './sys_role.service'
 
 @ApiTags('系统角色')
 @Controller('sys-role')
@@ -18,6 +19,7 @@ export class SysRoleController {
     private readonly cls: ClsService,
     private readonly prisma: PrismaService,
     @NestPrisma() private readonly nestPrisma: NestPrismaServiceType,
+    private readonly roleService: SysRoleService,
   ) {}
 
   @Post('list')
@@ -82,22 +84,7 @@ export class SysRoleController {
   @ApiResult(RoleEntity)
   @Permission({ group: '角色管理', name: '更新角色', model: 'Role', code: 'role:update' })
   async updateRole(@Body() dto: UpdateRoleBodyDto) {
-    const role = await this.nestPrisma.client.role.update({
-      where: { id: dto.id },
-      data: {
-        name: dto.name,
-        desc: dto.desc,
-        disabled: dto.disabled,
-        ...(dto.permissionIds !== undefined
-          ? {
-              permissions: {
-                set: dto.permissionIds.map((permissionId) => ({ id: permissionId })),
-              },
-            }
-          : {}),
-      },
-      include: { permissions: true },
-    })
+    const role = await this.roleService.updateRole(dto)
     return ResultData.ok(role)
   }
 

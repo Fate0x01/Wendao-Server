@@ -20,6 +20,11 @@ export interface JingCangStockGroupEntity {
   /** 商品SKU */
   sku: string;
   /**
+   * 负责人
+   * @nullable
+   */
+  responsiblePerson: string | null;
+  /**
    * 货号
    * @nullable
    */

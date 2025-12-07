@@ -417,12 +417,6 @@ const JingCangStockManager: React.FC = () => {
   const toolbarExtraActions = useMemo<ToolbarActionConfig[]>(
     () => [
       {
-        key: 'export',
-        label: '导出库存',
-        icon: <DownloadIcon />,
-        onClick: handleExport,
-      },
-      {
         key: 'download',
         label: '下载模板',
         icon: <DownloadIcon />,
@@ -441,6 +435,12 @@ const JingCangStockManager: React.FC = () => {
         icon: <UploadIcon />,
         onClick: handleImport,
         disabled: importLoading,
+      },
+      {
+        key: 'export',
+        label: '导出库存信息',
+        icon: <DownloadIcon />,
+        onClick: handleExport,
       },
     ],
     [
@@ -474,6 +474,13 @@ const JingCangStockManager: React.FC = () => {
         colKey: 'sku',
         width: 150,
         cell: ({ row }) => <SkuCell sku={row.sku} />,
+      },
+      {
+        title: '负责人',
+        colKey: 'responsiblePerson',
+        width: 120,
+        ellipsis: true,
+        cell: ({ row }) => row.responsiblePerson || <span className='text-gray-400'>-</span>,
       },
       {
         title: '货号',

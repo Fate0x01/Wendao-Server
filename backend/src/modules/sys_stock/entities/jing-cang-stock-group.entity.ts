@@ -14,6 +14,9 @@ export class JingCangStockGroupEntity {
   @ApiProperty({ description: '商品SKU', type: String })
   sku: string
 
+  @ApiProperty({ description: '负责人', type: String, nullable: true })
+  responsiblePerson: string | null
+
   @ApiProperty({ description: '货号', type: String, nullable: true })
   shelfNumber: string | null
 

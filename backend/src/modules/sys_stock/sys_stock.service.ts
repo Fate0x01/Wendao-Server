@@ -312,6 +312,7 @@ export class SysStockService {
         sku: true,
         departmentName: true,
         shopName: true,
+        responsiblePerson: true,
         shelfNumber: true,
         imageUrl: true,
         inboundBarcode: true,
@@ -341,6 +342,7 @@ export class SysStockService {
         departmentName: string
         shopName: string | null
         sku: string
+        responsiblePerson: string | null
         shelfNumber: string | null
         imageUrl: string | null
         inboundBarcode: string | null
@@ -367,6 +369,7 @@ export class SysStockService {
         departmentName: good.departmentName,
         shopName: good.shopName,
         sku: good.sku,
+        responsiblePerson: good.responsiblePerson,
         shelfNumber: good.shelfNumber,
         imageUrl: good.imageUrl,
         inboundBarcode: good.inboundBarcode,
@@ -435,6 +438,7 @@ export class SysStockService {
           departmentName: group.departmentName,
           shopName: group.shopName,
           sku: group.sku,
+          responsiblePerson: group.responsiblePerson,
           shelfNumber: group.shelfNumber,
           imageUrl: group.imageUrl,
           inboundBarcode: group.inboundBarcode,
@@ -751,6 +755,7 @@ export class SysStockService {
         sku: true,
         departmentName: true,
         shopName: true,
+        responsiblePerson: true,
         shelfNumber: true,
         imageUrl: true,
         inboundBarcode: true,
@@ -777,6 +782,7 @@ export class SysStockService {
           departmentName: good.departmentName,
           shopName: good.shopName,
           sku: good.sku,
+          responsiblePerson: good.responsiblePerson,
           shelfNumber: good.shelfNumber,
           imageUrl: good.imageUrl,
           inboundBarcode: good.inboundBarcode,
@@ -815,13 +821,13 @@ export class SysStockService {
       // 计算进货成本总货值
       const purchaseCostValue = good.purchaseCost !== null ? stockInfo.stockQuantity * good.purchaseCost : null
 
-      rows.push([good.departmentName || '', good.shopName || '', good.sku || '', good.shelfNumber || '', good.imageUrl || '', good.inboundBarcode || '', good.spec || '', stockInfo.warehouse || '', stockInfo.stockQuantity || 0, stockInfo.dailySalesQuantity || 0, stockInfo.monthlySalesQuantity || 0, turnoverDays !== null ? turnoverDays.toFixed(2) : '', stockInfo.sluggishDays || 0, purchaseCostValue !== null ? purchaseCostValue.toFixed(2) : ''])
+      rows.push([good.departmentName || '', good.shopName || '', good.sku || '', good.responsiblePerson || '', good.shelfNumber || '', good.imageUrl || '', good.inboundBarcode || '', good.spec || '', stockInfo.warehouse || '', stockInfo.stockQuantity || 0, stockInfo.dailySalesQuantity || 0, stockInfo.monthlySalesQuantity || 0, turnoverDays !== null ? turnoverDays.toFixed(2) : '', stockInfo.sluggishDays || 0, purchaseCostValue !== null ? purchaseCostValue.toFixed(2) : ''])
     }
 
     // 6. 返回 Excel 结果
     return new ExcelResult({
       filename: `京仓库存信息_${new Date().toISOString().split('T')[0]}.xlsx`,
-      headers: ['部门', '店铺名称', 'SKU', '货号', '产品图片', '入仓条码', '产品规格', '所属库房', '库存数量', '日销量', '月销量', '周转天数', '滞销天数', '进货成本总货值'],
+      headers: ['部门', '店铺名称', 'SKU', '负责人', '货号', '产品图片', '入仓条码', '产品规格', '所属库房', '库存数量', '日销量', '月销量', '周转天数', '滞销天数', '进货成本总货值'],
       rows,
     })
   }

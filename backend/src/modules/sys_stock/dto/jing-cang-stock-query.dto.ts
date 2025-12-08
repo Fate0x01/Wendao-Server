@@ -30,6 +30,16 @@ export class JingCangStockQueryDto {
   @IsString({ message: '仓库名称必须为字符串' })
   warehouse?: string
 
+  @ApiPropertyOptional({ description: '负责人', type: String })
+  @IsOptional()
+  @IsString({ message: '负责人必须为字符串' })
+  responsiblePerson?: string
+
+  @ApiPropertyOptional({ description: '店铺名称', type: String })
+  @IsOptional()
+  @IsString({ message: '店铺名称必须为字符串' })
+  shopName?: string
+
   @ApiPropertyOptional({ description: '是否达到补货预警', type: Boolean })
   @IsOptional()
   @Type(() => Boolean)

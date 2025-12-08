@@ -705,6 +705,16 @@ const JingCangStockManager: React.FC = () => {
                   </FormItem>
                 </Col>
                 <Col span={3} xs={12} sm={6} xl={3}>
+                  <FormItem label='负责人' name='responsiblePerson'>
+                    <Input placeholder='请输入负责人' />
+                  </FormItem>
+                </Col>
+                <Col span={3} xs={12} sm={6} xl={3}>
+                  <FormItem label='店铺名称' name='shopName'>
+                    <Input placeholder='请输入店铺名称' />
+                  </FormItem>
+                </Col>
+                <Col span={3} xs={12} sm={6} xl={3}>
                   <FormItem label='补货预警' name='isLowStock'>
                     <Select placeholder='请选择' clearable options={[{ label: '预警中', value: true }]} />
                   </FormItem>

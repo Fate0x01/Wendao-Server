@@ -19,6 +19,10 @@ export interface JingCangStockQueryDto {
   skuKeyword?: string;
   /** 仓库名称 */
   warehouse?: string;
+  /** 负责人 */
+  responsiblePerson?: string;
+  /** 店铺名称 */
+  shopName?: string;
   /** 是否达到补货预警 */
   isLowStock?: boolean;
   /** 是否滞销产品（滞销天数大于7天） */

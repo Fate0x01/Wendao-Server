@@ -7,7 +7,7 @@ const env = import.meta.env.MODE || 'development';
 const API_HOST = (proxy[env as keyof typeof proxy] as { API: string }).API;
 
 const SUCCESS_CODE = 0;
-const TIMEOUT = 10000;
+const TIMEOUT = 100000;
 
 export interface ApiResponse<T> {
   code: number;

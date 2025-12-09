@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Param, Post } from '@nestjs/common'
 import { ApiOperation, ApiTags } from '@nestjs/swagger'
 import { ClsService } from 'nestjs-cls'
 import { PrismaService } from 'nestjs-prisma'
+import { UseFileDownload } from 'src/common/decorators/export-kit'
 import { Permission } from 'src/common/decorators/permission.decorator'
 import { ApiResult, ResultData } from 'src/common/decorators/response.decorator'
 import { GetFile, UseFileUpload } from 'src/common/decorators/upload-kit'
@@ -98,5 +99,13 @@ export class SysGoodsController {
   async importEmgSkuMapping(@GetFile({ fileType: 'excel' }) file: Express.Multer.File) {
     const result = await this.sysGoodsService.importEmgSkuMapping(file)
     return ResultData.ok(result)
+  }
+
+  @Post('export')
+  @ApiOperation({ summary: '导出商品信息' })
+  @UseFileDownload({ description: '导出商品信息 Excel' })
+  @Permission({ group: '商品管理', name: '导出商品信息', model: 'Goods', code: 'goods:export' })
+  async exportGoods(@Body() query: GoodsQueryDto) {
+    return await this.sysGoodsService.exportGoods(query)
   }
 }

@@ -3,6 +3,7 @@ import { CrudFormModal, CrudToolbar } from 'components/CrudKit';
 import { useCrudModal, useCrudTable } from 'components/CrudKit/hooks';
 import type { ToolbarActionConfig } from 'components/CrudKit/types';
 import DeptTreeSelect, { useDeptTree } from 'components/DeptTreeSelect';
+import { useDownloadNotify } from 'components/DownloadNotifyModal';
 import React, { memo, useCallback, useMemo, useRef, useState } from 'react';
 import api from 'services';
 import type { GoodsEntity, GoodsImportResultEntity, GoodsQueryDto, UpdateGoodsDto } from 'services/generated/model';
@@ -93,6 +94,9 @@ const GoodsManager: React.FC = () => {
   const [importResultVisible, setImportResultVisible] = useState(false);
   const [importResult, setImportResult] = useState<GoodsImportResultEntity | null>(null);
   const [importLoading, setImportLoading] = useState(false);
+
+  // 导出功能
+  const { startDownload, DownloadModal } = useDownloadNotify();
 
   // 费用明细列展开状态
   const [showCostDetails, setShowCostDetails] = useState(false);
@@ -255,6 +259,27 @@ const GoodsManager: React.FC = () => {
     setShowCostDetails((prev) => !prev);
   }, []);
 
+  // 导出商品信息
+  const handleExport = useCallback(() => {
+    // 获取当前筛选条件（排除分页参数）
+    const { current, pageSize, ...exportQuery } = filters;
+
+    startDownload({
+      downloadFn: async () => {
+        const response = await api.sysGoodsControllerExportGoods(exportQuery);
+        // 响应拦截器已经处理了 Blob 响应，直接返回
+        if (response instanceof Blob) {
+          return response;
+        }
+        // 如果不是 Blob，抛出错误
+        throw new Error('导出失败：响应格式不正确');
+      },
+      defaultFileName: `商品信息_${new Date().toISOString().split('T')[0]}.xlsx`,
+      downloadText: '正在导出商品信息，请稍候...',
+      saveText: '导出完成，请点击保存按钮保存文件',
+    });
+  }, [filters, startDownload]);
+
   // 工具栏额外按钮
   const toolbarExtraActions = useMemo<ToolbarActionConfig[]>(
     () => [
@@ -277,8 +302,14 @@ const GoodsManager: React.FC = () => {
         onClick: handleImport,
         disabled: importLoading,
       },
+      {
+        key: 'export',
+        label: '导出商品',
+        icon: <DownloadIcon />,
+        onClick: handleExport,
+      },
     ],
-    [showCostDetails, handleToggleCostDetails, handleDownloadTemplate, handleImport, importLoading],
+    [showCostDetails, handleToggleCostDetails, handleExport, handleDownloadTemplate, handleImport, importLoading],
   );
 
   // 为列添加自定义渲染逻辑
@@ -467,6 +498,9 @@ const GoodsManager: React.FC = () => {
 
       {/* 导入结果弹窗 */}
       <ImportResultModal visible={importResultVisible} result={importResult} onClose={handleCloseImportResult} />
+
+      {/* 导出下载弹窗 */}
+      <DownloadModal />
     </div>
   );
 };

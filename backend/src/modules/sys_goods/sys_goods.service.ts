@@ -3,6 +3,7 @@ import { BadRequestException, ForbiddenException, Injectable, NotFoundException 
 import { Decimal } from '@prisma/client/runtime/library'
 import { ClsService } from 'nestjs-cls'
 import { PrismaService } from 'nestjs-prisma'
+import { ExcelResult } from 'src/common/decorators/export-kit'
 import defineAbilityFor from 'src/shared/casl/casl-ability.factory'
 import { Actions } from 'src/shared/casl/casl-interface'
 import { NestPrisma, NestPrismaServiceType } from 'src/shared/prisma/prisma.extension.decorator'
@@ -572,5 +573,71 @@ export class SysGoodsService {
       fail: failCount,
       errors: errors.slice(0, 20),
     }
+  }
+
+  /**
+   * 导出商品信息
+   * @param query 查询参数
+   * @returns Excel 文件
+   */
+  async exportGoods(query: GoodsQueryDto): Promise<ExcelResult> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 查询所有符合条件的商品（不分页，用于导出）
+    const allGoods = await this.prisma.goods.findMany({
+      where: {
+        AND: [
+          {
+            departmentId: query.departmentId || undefined,
+            shopName: query.shopName ? { contains: query.shopName } : undefined,
+            shelfNumber: query.shelfNumber || undefined,
+            inboundBarcode: query.inboundBarcode || undefined,
+            responsiblePerson: query.responsiblePerson ? { contains: query.responsiblePerson } : undefined,
+            ...(query.skuKeyword ? { sku: { contains: query.skuKeyword } } : {}),
+          },
+          accessibleBy(ability).Goods,
+        ],
+      },
+      select: {
+        departmentName: true,
+        shopName: true,
+        sku: true,
+        responsiblePerson: true,
+        shelfNumber: true,
+        imageUrl: true,
+        certificateImageUrl: true,
+        inboundBarcode: true,
+        spec: true,
+        purchaseCost: true,
+        minSalePrice: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    // 构建导出数据行
+    const rows: any[][] = []
+    for (const good of allGoods) {
+      rows.push([
+        good.departmentName || '',
+        good.shopName || '',
+        good.sku || '',
+        good.responsiblePerson || '',
+        good.shelfNumber || '',
+        good.imageUrl || '',
+        good.certificateImageUrl || '',
+        good.inboundBarcode || '',
+        good.spec || '',
+        good.purchaseCost ? Number(good.purchaseCost).toFixed(2) : '',
+        good.minSalePrice ? Number(good.minSalePrice).toFixed(2) : '',
+      ])
+    }
+
+    // 返回 Excel 结果
+    return new ExcelResult({
+      filename: `商品信息_${new Date().toISOString().split('T')[0]}.xlsx`,
+      headers: ['部门', '店铺名称', 'SKU', '负责人', '货架号', '产品图片', '合格证图', '入仓条码', '规格', '进货成本', '最低售价'],
+      rows,
+    })
   }
 }

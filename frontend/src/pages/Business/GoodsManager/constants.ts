@@ -140,7 +140,7 @@ export const BASE_COLUMNS: PrimaryTableCol<GoodsEntity>[] = [
     cell: ({ row }) => row.responsiblePerson || '-',
   },
   {
-    title: '货架号',
+    title: '货号',
     colKey: 'shelfNumber',
     width: 100,
     ellipsis: true,

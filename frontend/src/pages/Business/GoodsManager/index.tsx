@@ -266,7 +266,7 @@ const GoodsManager: React.FC = () => {
 
     startDownload({
       downloadFn: async () => {
-        const response = await api.sysGoodsControllerExportGoods(exportQuery);
+        const response = await api.sysGoodsControllerExportGoods(exportQuery as any);
         // 响应拦截器已经处理了 Blob 响应，直接返回
         if (response instanceof Blob) {
           return response;

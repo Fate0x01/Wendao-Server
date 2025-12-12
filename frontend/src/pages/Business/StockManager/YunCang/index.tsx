@@ -437,7 +437,7 @@ const YunCangStockManager: React.FC = () => {
         cell: ({ row }) => <ImageCell url={row.imageUrl} />,
       },
       {
-        title: '库存池数量',
+        title: '库存',
         colKey: 'actualQuantity',
         width: 120,
         align: 'right',
@@ -492,6 +492,20 @@ const YunCangStockManager: React.FC = () => {
             return <Tag theme='warning'>滞销产品</Tag>;
           }
           return <span>{sluggishDays}</span>;
+        },
+      },
+      {
+        title: '进货成本总货值',
+        colKey: 'totalPurchaseCostValue',
+        width: 150,
+        align: 'right',
+        sortType: 'all',
+        sorter: true,
+        cell: ({ row }) => {
+          if (row.totalPurchaseCostValue === null || row.totalPurchaseCostValue === undefined) {
+            return <span className='text-gray-400'>-</span>;
+          }
+          return <span>¥{row.totalPurchaseCostValue.toFixed(2)}</span>;
         },
       },
       {

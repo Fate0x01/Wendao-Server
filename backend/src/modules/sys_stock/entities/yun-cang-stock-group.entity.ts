@@ -42,4 +42,10 @@ export class YunCangStockGroupEntity {
 
   @ApiProperty({ description: '库存池实际数量', type: Number })
   actualQuantity: number
+
+  @ApiProperty({ description: '进货成本', type: Number, nullable: true })
+  purchaseCost: number | null
+
+  @ApiProperty({ description: '进货成本总货值', type: Number, nullable: true })
+  totalPurchaseCostValue: number | null
 }

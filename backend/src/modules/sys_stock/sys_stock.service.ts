@@ -705,6 +705,7 @@ export class SysStockService {
         imageUrl: true,
         inboundBarcode: true,
         spec: true,
+        purchaseCost: true,
       },
     })
 
@@ -744,6 +745,9 @@ export class SysStockService {
     // 4. 合并商品信息和库存信息
     let rows = allGoods.map((good) => {
       const stockInfo = stockInfoMap.get(good.id)
+      const actualQuantity = stockInfo?.actualQuantity ?? 0
+      const purchaseCost = good.purchaseCost !== null ? Number(good.purchaseCost) : null
+      const totalPurchaseCostValue = purchaseCost !== null ? purchaseCost * actualQuantity : null
       return {
         goodId: good.id,
         departmentName: good.departmentName,
@@ -758,7 +762,9 @@ export class SysStockService {
         monthlySalesQuantity: stockInfo?.monthlySalesQuantity ?? 0,
         reorderThreshold: stockInfo?.reorderThreshold ?? 10,
         sluggishDays: stockInfo?.sluggishDays ?? 0,
-        actualQuantity: stockInfo?.actualQuantity ?? 0,
+        actualQuantity,
+        purchaseCost,
+        totalPurchaseCostValue,
         createdAt: stockInfo?.createdAt ?? new Date(),
       }
     })
@@ -928,12 +934,15 @@ export class SysStockService {
             imageUrl: true,
             inboundBarcode: true,
             spec: true,
+            purchaseCost: true,
           },
         },
       },
     })
 
     const actualQuantity = updated.yunCangInventoryPool?.quantity ?? 0
+    const purchaseCost = updated.good.purchaseCost !== null ? Number(updated.good.purchaseCost) : null
+    const totalPurchaseCostValue = purchaseCost !== null ? purchaseCost * actualQuantity : null
 
     return {
       goodId: updated.goodId,
@@ -950,6 +959,8 @@ export class SysStockService {
       reorderThreshold: updated.reorderThreshold,
       sluggishDays: updated.sluggishDays,
       actualQuantity,
+      purchaseCost,
+      totalPurchaseCostValue,
     }
   }
 
@@ -1298,9 +1309,7 @@ export class SysStockService {
     let skuFilteredPools = filteredPools
     if (query.skuKeyword) {
       const skuKeyword = query.skuKeyword.trim().toLowerCase()
-      skuFilteredPools = filteredPools.filter((pool) =>
-        pool.stockInfos.some((s) => s.good.sku.toLowerCase().includes(skuKeyword)),
-      )
+      skuFilteredPools = filteredPools.filter((pool) => pool.stockInfos.some((s) => s.good.sku.toLowerCase().includes(skuKeyword)))
     }
 
     // 5. 转换为实体格式
@@ -1625,11 +1634,11 @@ export class SysStockService {
    */
   async exportYunCangStock(query: YunCangStockQueryDto): Promise<ExcelResult> {
     const { rows } = await this.listYunCangStock({ ...query, current: 1, pageSize: Number.MAX_SAFE_INTEGER })
-    const exportRows = (rows as any[]).map((row) => [row.departmentName || '', row.shopName || '', row.sku || '', row.responsiblePerson || '', row.shelfNumber || '', row.imageUrl || '', row.inboundBarcode || '', row.spec || '', row.actualQuantity || 0, row.dailySalesQuantity || 0, row.monthlySalesQuantity || 0, row.reorderThreshold || 0, row.sluggishDays || 0])
+    const exportRows = (rows as any[]).map((row) => [row.departmentName || '', row.shopName || '', row.sku || '', row.responsiblePerson || '', row.shelfNumber || '', row.imageUrl || '', row.inboundBarcode || '', row.spec || '', row.actualQuantity || 0, row.dailySalesQuantity || 0, row.monthlySalesQuantity || 0, row.reorderThreshold || 0, row.sluggishDays || 0, row.purchaseCost !== null ? row.purchaseCost : '', row.totalPurchaseCostValue !== null ? row.totalPurchaseCostValue.toFixed(2) : ''])
 
     return new ExcelResult({
       filename: `云仓库存信息_${new Date().toISOString().split('T')[0]}.xlsx`,
-      headers: ['部门', '店铺名称', 'SKU', '负责人', '货号', '产品图片', '入仓条码', '产品规格', '库存数量', '日销量', '月销量', '补货预警阈值', '滞销天数'],
+      headers: ['部门', '店铺名称', 'SKU', '负责人', '货号', '产品图片', '入仓条码', '产品规格', '库存数量', '日销量', '月销量', '补货预警阈值', '滞销天数', '进货成本', '进货成本总货值'],
       rows: exportRows,
     })
   }

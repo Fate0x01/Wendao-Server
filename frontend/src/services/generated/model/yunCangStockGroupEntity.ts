@@ -53,4 +53,14 @@ export interface YunCangStockGroupEntity {
   sluggishDays: number;
   /** 库存池实际数量 */
   actualQuantity: number;
+  /**
+   * 进货成本
+   * @nullable
+   */
+  purchaseCost: number | null;
+  /**
+   * 进货成本总货值
+   * @nullable
+   */
+  totalPurchaseCostValue: number | null;
 }

@@ -21,6 +21,8 @@ import {
   DateRangePicker,
   Dialog,
   Form,
+  Image,
+  ImageViewer,
   Input,
   InputNumber,
   MessagePlugin,
@@ -35,14 +37,79 @@ import type { PrimaryTableCol } from 'tdesign-react/es/table';
 const { FormItem } = Form;
 
 /**
+ * 图片展示组件
+ * 支持点击放大预览
+ */
+const ImageCell: React.FC<{ url?: string | null }> = memo(({ url }) => {
+  const [viewerVisible, setViewerVisible] = useState(false);
+
+  if (!url) return <span className='text-gray-400'>-</span>;
+
+  return (
+    <>
+      <Image
+        src={url}
+        style={{ width: 40, height: 40 }}
+        fit='cover'
+        shape='round'
+        loading='lazy'
+        error='加载失败'
+        onClick={() => setViewerVisible(true)}
+        className='cursor-pointer'
+      />
+      <ImageViewer visible={viewerVisible} images={[url]} onClose={() => setViewerVisible(false)} />
+    </>
+  );
+});
+
+/**
  * 采购详情表格列
  */
 const purchaseDetailColumns: PrimaryTableCol<PurchaseDetailEntity>[] = [
+  {
+    title: '部门',
+    colKey: 'departmentName',
+    width: 120,
+    ellipsis: true,
+    cell: ({ row }) => row.departmentName || <span className='text-gray-400'>-</span>,
+  },
+  {
+    title: '负责人',
+    colKey: 'responsiblePerson',
+    width: 120,
+    ellipsis: true,
+    cell: ({ row }) => row.responsiblePerson || <span className='text-gray-400'>-</span>,
+  },
+  {
+    title: '货号',
+    colKey: 'shelfNumber',
+    width: 120,
+    ellipsis: true,
+    cell: ({ row }) => row.shelfNumber || <span className='text-gray-400'>-</span>,
+  },
   {
     title: 'SKU',
     colKey: 'sku',
     width: 120,
     ellipsis: true,
+    cell: ({ row }) => (
+      <Tag size='small' variant='light'>
+        {row.sku}
+      </Tag>
+    ),
+  },
+  {
+    title: '产品规格',
+    colKey: 'spec',
+    width: 150,
+    ellipsis: true,
+    cell: ({ row }) => row.spec || <span className='text-gray-400'>-</span>,
+  },
+  {
+    title: '产品图片',
+    colKey: 'imageUrl',
+    width: 100,
+    cell: ({ row }) => <ImageCell url={row.imageUrl} />,
   },
   {
     title: '采购数量',
@@ -62,14 +129,14 @@ const purchaseDetailColumns: PrimaryTableCol<PurchaseDetailEntity>[] = [
     colKey: 'purchaseOrderNumber',
     width: 150,
     ellipsis: true,
-    cell: ({ row }) => row.purchaseOrderNumber || '-',
+    cell: ({ row }) => row.purchaseOrderNumber || <span className='text-gray-400'>-</span>,
   },
   {
     title: '快递单号',
     colKey: 'expressNo',
     width: 150,
     ellipsis: true,
-    cell: ({ row }) => row.expressNo || '-',
+    cell: ({ row }) => row.expressNo || <span className='text-gray-400'>-</span>,
   },
 ];
 
@@ -80,46 +147,13 @@ interface PurchaseOrderDetailModalProps {
   visible: boolean;
   order: PurchaseOrderEntity | null;
   onClose: () => void;
-  onConfirmByDepartment?: () => void;
-  onConfirmByFinance?: () => void;
 }
 
-const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> = ({
-  visible,
-  order,
-  onClose,
-  onConfirmByDepartment,
-  onConfirmByFinance,
-}) => {
+const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> = ({ visible, order, onClose }) => {
   if (!order) return null;
 
-  const canConfirmByDepartment = !order.departmentConfirmStatus;
-  const canConfirmByFinance = order.departmentConfirmStatus && !order.financeConfirmStatus;
-
   return (
-    <Dialog
-      header='采购订单详情'
-      visible={visible}
-      onClose={onClose}
-      width={1000}
-      footer={
-        <>
-          <Button variant='base' theme='default' onClick={onClose}>
-            关闭
-          </Button>
-          {canConfirmByDepartment && onConfirmByDepartment && (
-            <Button theme='primary' onClick={onConfirmByDepartment}>
-              部门确认
-            </Button>
-          )}
-          {canConfirmByFinance && onConfirmByFinance && (
-            <Button theme='success' onClick={onConfirmByFinance}>
-              财务确认
-            </Button>
-          )}
-        </>
-      }
-    >
+    <Dialog header='采购订单详情' visible={visible} onClose={onClose} onConfirm={onClose} width={1000}>
       <div className='space-y-4'>
         <div className='grid grid-cols-2 gap-4'>
           <div>
@@ -153,6 +187,7 @@ const PurchaseOrderDetailModal: React.FC<PurchaseOrderDetailModalProps> = ({
             size='small'
             hover
             tableLayout='fixed'
+            horizontalScrollAffixedBottom
           />
         </div>
       </div>
@@ -430,6 +465,9 @@ const PurchaseOrderManager: React.FC = () => {
   const [detailVisible, setDetailVisible] = useState(false);
   const [currentOrder, setCurrentOrder] = useState<PurchaseOrderEntity | null>(null);
 
+  // 展开的行 keys
+  const [expandedRowKeys, setExpandedRowKeys] = useState<(string | number)[]>([]);
+
   // 表格数据管理
   const {
     list,
@@ -504,38 +542,62 @@ const PurchaseOrderManager: React.FC = () => {
   }, [refresh]);
 
   // 部门确认
-  const handleConfirmByDepartment = useCallback(async () => {
-    if (!currentOrder) return;
-
-    try {
-      await api.sysStockControllerConfirmPurchaseOrderByDepartment({
-        id: currentOrder.id,
-      } as PurchaseOrderConfirmDto);
-      MessagePlugin.success('部门确认成功');
-      handleCloseModal();
-      refresh();
-    } catch (error) {
-      console.error('部门确认失败:', error);
-      MessagePlugin.error('部门确认失败');
-    }
-  }, [currentOrder, handleCloseModal, refresh]);
+  const handleConfirmByDepartment = useCallback(
+    async (order: PurchaseOrderEntity) => {
+      try {
+        await api.sysStockControllerConfirmPurchaseOrderByDepartment({
+          id: order.id,
+        } as PurchaseOrderConfirmDto);
+        MessagePlugin.success('部门确认成功');
+        refresh();
+      } catch (error) {
+        console.error('部门确认失败:', error);
+        MessagePlugin.error('部门确认失败');
+      }
+    },
+    [refresh],
+  );
 
   // 财务确认
-  const handleConfirmByFinance = useCallback(async () => {
-    if (!currentOrder) return;
+  const handleConfirmByFinance = useCallback(
+    async (order: PurchaseOrderEntity) => {
+      try {
+        await api.sysStockControllerConfirmPurchaseOrderByFinance({
+          id: order.id,
+        } as PurchaseOrderConfirmDto);
+        MessagePlugin.success('财务确认成功');
+        refresh();
+      } catch (error) {
+        console.error('财务确认失败:', error);
+        MessagePlugin.error('财务确认失败');
+      }
+    },
+    [refresh],
+  );
 
-    try {
-      await api.sysStockControllerConfirmPurchaseOrderByFinance({
-        id: currentOrder.id,
-      } as PurchaseOrderConfirmDto);
-      MessagePlugin.success('财务确认成功');
-      handleCloseModal();
-      refresh();
-    } catch (error) {
-      console.error('财务确认失败:', error);
-      MessagePlugin.error('财务确认失败');
+  // 展开行变化处理
+  const handleExpandChange = useCallback((keys: (string | number)[]) => {
+    setExpandedRowKeys(keys);
+  }, []);
+
+  // 行展开渲染
+  const expandedRowRender = useCallback(({ row }: { row: PurchaseOrderEntity }) => {
+    if (!row.purchaseDetails || row.purchaseDetails.length === 0) {
+      return <div className='p-4 text-gray-400'>暂无采购详情</div>;
     }
-  }, [currentOrder, handleCloseModal, refresh]);
+
+    return (
+      <Table
+        data={row.purchaseDetails}
+        columns={purchaseDetailColumns}
+        rowKey='id'
+        size='small'
+        hover
+        tableLayout='fixed'
+        horizontalScrollAffixedBottom
+      />
+    );
+  }, []);
 
   // 搜索表单提交
   const handleSearchSubmit = useCallback(() => {
@@ -632,7 +694,7 @@ const PurchaseOrderManager: React.FC = () => {
         title: '操作',
         colKey: 'operation',
         fixed: 'right',
-        width: 200,
+        width: 280,
         cell: ({ row }) => (
           <div className='space-x-2'>
             <Button variant='text' theme='primary' size='small' onClick={() => handleOpenDetail(row)}>
@@ -640,14 +702,24 @@ const PurchaseOrderManager: React.FC = () => {
             </Button>
             {!row.departmentConfirmStatus && (
               <Button variant='text' theme='warning' size='small' onClick={() => handleOpenEdit(row)}>
-                编辑
+                采购编辑
+              </Button>
+            )}
+            {!row.departmentConfirmStatus && (
+              <Button variant='text' theme='success' size='small' onClick={() => handleConfirmByDepartment(row)}>
+                部门确认
+              </Button>
+            )}
+            {row.departmentConfirmStatus && !row.financeConfirmStatus && (
+              <Button variant='text' theme='success' size='small' onClick={() => handleConfirmByFinance(row)}>
+                财务确认
               </Button>
             )}
           </div>
         ),
       },
     ];
-  }, []);
+  }, [handleOpenDetail, handleOpenEdit, handleConfirmByDepartment, handleConfirmByFinance]);
 
   return (
     <div className='flex min-h-full flex-col gap-4'>
@@ -725,6 +797,9 @@ const PurchaseOrderManager: React.FC = () => {
           hover
           tableLayout='fixed'
           horizontalScrollAffixedBottom
+          expandedRowKeys={expandedRowKeys}
+          onExpandChange={handleExpandChange}
+          expandedRow={expandedRowRender}
           pagination={{
             current: filters.current,
             pageSize: filters.pageSize,
@@ -754,13 +829,7 @@ const PurchaseOrderManager: React.FC = () => {
       />
 
       {/* 采购订单详情弹窗 */}
-      <PurchaseOrderDetailModal
-        visible={detailVisible}
-        order={currentOrder}
-        onClose={handleCloseModal}
-        onConfirmByDepartment={handleConfirmByDepartment}
-        onConfirmByFinance={handleConfirmByFinance}
-      />
+      <PurchaseOrderDetailModal visible={detailVisible} order={currentOrder} onClose={handleCloseModal} />
 
       {/* 导出下载弹窗 */}
       <DownloadModal />

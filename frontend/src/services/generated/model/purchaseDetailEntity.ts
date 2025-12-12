@@ -18,6 +18,36 @@ export interface PurchaseDetailEntity {
    * @nullable
    */
   name: string | null;
+  /**
+   * 部门名称
+   * @nullable
+   */
+  departmentName: string | null;
+  /**
+   * 店铺名称
+   * @nullable
+   */
+  shopName: string | null;
+  /**
+   * 产品图片
+   * @nullable
+   */
+  imageUrl: string | null;
+  /**
+   * 产品规格
+   * @nullable
+   */
+  spec: string | null;
+  /**
+   * 负责人
+   * @nullable
+   */
+  responsiblePerson: string | null;
+  /**
+   * 货架号
+   * @nullable
+   */
+  shelfNumber: string | null;
   /** 采购数量 */
   quantity: number;
   /** 采购金额 */

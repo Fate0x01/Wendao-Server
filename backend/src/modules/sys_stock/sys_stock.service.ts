@@ -1369,7 +1369,17 @@ export class SysStockService {
       include: {
         purchaseDetails: {
           include: {
-            good: { select: { sku: true } },
+            good: {
+              select: {
+                sku: true,
+                departmentName: true,
+                shopName: true,
+                imageUrl: true,
+                spec: true,
+                responsiblePerson: true,
+                shelfNumber: true,
+              },
+            },
           },
         },
       },
@@ -1406,7 +1416,19 @@ export class SysStockService {
       },
       include: {
         purchaseDetails: {
-          include: { good: { select: { sku: true } } },
+          include: {
+            good: {
+              select: {
+                sku: true,
+                departmentName: true,
+                shopName: true,
+                imageUrl: true,
+                spec: true,
+                responsiblePerson: true,
+                shelfNumber: true,
+              },
+            },
+          },
         },
       },
       orderBy: { createdAt: 'desc' },
@@ -1490,7 +1512,23 @@ export class SysStockService {
 
     const result = await this.prisma.purchaseOrder.findUnique({
       where: { id: updated.id },
-      include: { purchaseDetails: { include: { good: { select: { sku: true } } } } },
+      include: {
+        purchaseDetails: {
+          include: {
+            good: {
+              select: {
+                sku: true,
+                departmentName: true,
+                shopName: true,
+                imageUrl: true,
+                spec: true,
+                responsiblePerson: true,
+                shelfNumber: true,
+              },
+            },
+          },
+        },
+      },
     })
 
     return this.mapPurchaseOrder(result!)
@@ -1632,7 +1670,13 @@ export class SysStockService {
             id: d.id,
             goodId: d.goodId,
             sku: d.good?.sku ?? '',
-            name: null,
+            name: d.good?.sku ?? null, // 使用 SKU 作为名称
+            departmentName: d.good?.departmentName ?? null,
+            shopName: d.good?.shopName ?? null,
+            imageUrl: d.good?.imageUrl ?? null,
+            spec: d.good?.spec ?? null,
+            responsiblePerson: d.good?.responsiblePerson ?? null,
+            shelfNumber: d.good?.shelfNumber ?? null,
             quantity: d.quantity,
             purchaseAmount: Number(d.purchaseAmount),
             purchaseOrderNumber: d.purchaseOrderNumber ?? null,

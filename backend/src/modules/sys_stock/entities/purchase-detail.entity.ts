@@ -13,6 +13,24 @@ export class PurchaseDetailEntity {
   @ApiProperty({ description: '商品名称', type: String, nullable: true })
   name: string | null
 
+  @ApiProperty({ description: '部门名称', type: String, nullable: true })
+  departmentName: string | null
+
+  @ApiProperty({ description: '店铺名称', type: String, nullable: true })
+  shopName: string | null
+
+  @ApiProperty({ description: '产品图片', type: String, nullable: true })
+  imageUrl: string | null
+
+  @ApiProperty({ description: '产品规格', type: String, nullable: true })
+  spec: string | null
+
+  @ApiProperty({ description: '负责人', type: String, nullable: true })
+  responsiblePerson: string | null
+
+  @ApiProperty({ description: '货架号', type: String, nullable: true })
+  shelfNumber: string | null
+
   @ApiProperty({ description: '采购数量', type: Number })
   quantity: number
 

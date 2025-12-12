@@ -6,17 +6,12 @@ import type { CrudToolbarProps, ToolbarActionConfig } from '../types';
  * CRUD 工具栏组件
  * 支持新增、导入、导出、批量操作等按钮
  */
-const CrudToolbar: React.FC<CrudToolbarProps> = ({
-  primaryAction,
-  extraActions,
-  batchActions,
-  selectedCount = 0,
-}) => {
+const CrudToolbar: React.FC<CrudToolbarProps> = ({ primaryAction, extraActions, batchActions, selectedCount = 0 }) => {
   // 渲染操作按钮
-  const renderActionButton = (action: ToolbarActionConfig) => (
+  const renderActionButton = (action: ToolbarActionConfig, index?: number) => (
     <Button
-      key={action.key}
-      theme={action.danger ? 'danger' : 'default'}
+      key={action.key || `action-${index}`}
+      theme={action.theme || (action.danger ? 'danger' : 'default')}
       variant='outline'
       disabled={action.disabled}
       onClick={action.onClick}
@@ -40,13 +35,13 @@ const CrudToolbar: React.FC<CrudToolbarProps> = ({
         )}
 
         {/* 额外操作按钮 */}
-        {extraActions?.map(renderActionButton)}
+        {extraActions?.map((action, index) => renderActionButton(action, index))}
 
         {/* 批量操作按钮 */}
         {showBatchActions && (
           <>
             <span className='text-gray-500'>已选 {selectedCount} 项</span>
-            {batchActions.map(renderActionButton)}
+            {batchActions.map((action, index) => renderActionButton(action, index))}
           </>
         )}
       </Space>
@@ -55,4 +50,3 @@ const CrudToolbar: React.FC<CrudToolbarProps> = ({
 };
 
 export default memo(CrudToolbar);
-

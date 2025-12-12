@@ -9,11 +9,14 @@ import { GetFile, UseFileUpload } from 'src/common/decorators/upload-kit'
 import { NestPrisma, NestPrismaServiceType } from 'src/shared/prisma/prisma.extension.decorator'
 import { InventoryPoolInfoQueryDto } from './dto/inventory-pool-info-query.dto'
 import { JingCangStockQueryDto } from './dto/jing-cang-stock-query.dto'
+import { ListSharedInventoryPoolDto } from './dto/list-shared-inventory-pool.dto'
 import { PurchaseOrderConfirmDto } from './dto/purchase-order-confirm.dto'
 import { PurchaseOrderCreateDto } from './dto/purchase-order-create.dto'
 import { PurchaseOrderQueryDto } from './dto/purchase-order-query.dto'
 import { PurchaseOrderUpdateDto } from './dto/purchase-order-update.dto'
+import { RemoveSharedInventoryPoolDto } from './dto/remove-shared-inventory-pool.dto'
 import { SetReorderThresholdDto } from './dto/set-reorder-threshold.dto'
+import { SetSharedInventoryPoolDto } from './dto/set-shared-inventory-pool.dto'
 import { SetYunCangReorderThresholdDto } from './dto/set-yun-cang-reorder-threshold.dto'
 import { YunCangStockQueryDto } from './dto/yun-cang-stock-query.dto'
 import { InventoryPoolInfoEntity } from './entities/inventory-pool-info.entity'
@@ -21,6 +24,7 @@ import { JingCangStockGroupEntity } from './entities/jing-cang-stock-group.entit
 import { JingCangStockInfoEntity } from './entities/jing-cang-stock-info.entity'
 import { JingCangStockStatisticsEntity } from './entities/jing-cang-stock-statistics.entity'
 import { PurchaseOrderEntity } from './entities/purchase-order.entity'
+import { SharedInventoryPoolEntity } from './entities/shared-inventory-pool.entity'
 import { StockImportResultEntity } from './entities/stock-import-result.entity'
 import { YunCangStockGroupEntity } from './entities/yun-cang-stock-group.entity'
 import { YunCangStockStatisticsEntity } from './entities/yun-cang-stock-statistics.entity'
@@ -176,5 +180,32 @@ export class SysStockController {
   @Permission({ group: '库存管理', name: '导出京仓库存信息', model: 'JingCangStockInfo', code: 'stock:export-jing-cang-stock' })
   async exportJingCangStock(@Body() query: JingCangStockQueryDto) {
     return await this.sysStockService.exportJingCangStock(query)
+  }
+
+  @Post('set-shared-inventory-pool')
+  @ApiOperation({ summary: '设置多个SKU共用一个库存池' })
+  @ApiResult(SharedInventoryPoolEntity)
+  @Permission({ group: '库存管理', name: '设置多个SKU共用库存池', model: 'YunCangStockInfo', code: 'stock:set-shared-inventory-pool' })
+  async setSharedInventoryPool(@Body() dto: SetSharedInventoryPoolDto) {
+    const result = await this.sysStockService.setSharedInventoryPool(dto)
+    return ResultData.ok(result)
+  }
+
+  @Post('list-shared-inventory-pool')
+  @ApiOperation({ summary: '查询库存池列表（多个SKU共用）' })
+  @ApiResult(SharedInventoryPoolEntity, true, true)
+  @Permission({ group: '库存管理', name: '查询库存池列表', model: 'YunCangStockInfo', code: 'stock:list-shared-inventory-pool' })
+  async listSharedInventoryPool(@Body() query: ListSharedInventoryPoolDto) {
+    const { rows, total } = await this.sysStockService.listSharedInventoryPool(query)
+    return ResultData.list(rows, total)
+  }
+
+  @Post('remove-shared-inventory-pool')
+  @ApiOperation({ summary: '解除SKU的共享库存池关系' })
+  @ApiResult(Boolean)
+  @Permission({ group: '库存管理', name: '解除共享库存池关系', model: 'YunCangStockInfo', code: 'stock:remove-shared-inventory-pool' })
+  async removeSharedInventoryPool(@Body() dto: RemoveSharedInventoryPoolDto) {
+    const result = await this.sysStockService.removeSharedInventoryPool(dto)
+    return ResultData.ok(result)
   }
 }

@@ -17,6 +17,7 @@ import type {
   InventoryPoolInfoQueryDto,
   JingCangStockQueryDto,
   LinkMemberDto,
+  ListSharedInventoryPoolDto,
   LoginDto,
   MembersQueryDto,
   PurchaseOrderConfirmDto,
@@ -25,9 +26,11 @@ import type {
   PurchaseOrderUpdateDto,
   RefreshTokenDto,
   RemoveMemberDto,
+  RemoveSharedInventoryPoolDto,
   RoleQueryDto,
   SetLeadersDto,
   SetReorderThresholdDto,
+  SetSharedInventoryPoolDto,
   SetYunCangReorderThresholdDto,
   SysAuthControllerGetUserInfo200,
   SysAuthControllerGetUserPermissions200,
@@ -68,8 +71,11 @@ import type {
   SysStockControllerImportJingCangStockBody,
   SysStockControllerListJingCangStock200,
   SysStockControllerListPurchaseOrder200,
+  SysStockControllerListSharedInventoryPool200,
   SysStockControllerListYunCangStock200,
+  SysStockControllerRemoveSharedInventoryPool200,
   SysStockControllerSetReorderThreshold200,
+  SysStockControllerSetSharedInventoryPool200,
   SysStockControllerSetYunCangReorderThreshold200,
   SysStockControllerStatisticsJingCangStock200,
   SysStockControllerStatisticsYunCangStock200,
@@ -794,7 +800,49 @@ const sysStockControllerExportJingCangStock = (
       options);
     }
   
-return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost,sysGoodsControllerImportEmgSkuMapping,sysGoodsControllerExportGoods,sysStockControllerImportJingCangStock,sysStockControllerListYunCangStock,sysStockControllerStatisticsYunCangStock,sysStockControllerGetYunCangInventoryPoolInfo,sysStockControllerListJingCangStock,sysStockControllerStatisticsJingCangStock,sysStockControllerSetYunCangReorderThreshold,sysStockControllerSetReorderThreshold,sysStockControllerCreatePurchaseOrder,sysStockControllerListPurchaseOrder,sysStockControllerUpdatePurchaseOrder,sysStockControllerConfirmPurchaseOrderByDepartment,sysStockControllerConfirmPurchaseOrderByFinance,sysStockControllerExportYunCangStock,sysStockControllerExportPurchaseOrder,sysStockControllerExportJingCangStock}};
+/**
+ * @summary 设置多个SKU共用一个库存池
+ */
+const sysStockControllerSetSharedInventoryPool = (
+    setSharedInventoryPoolDto: SetSharedInventoryPoolDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerSetSharedInventoryPool200>>,) => {
+      return customInstance<SysStockControllerSetSharedInventoryPool200>(
+      {url: `/sys-stock/set-shared-inventory-pool`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: setSharedInventoryPoolDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 查询库存池列表（多个SKU共用）
+ */
+const sysStockControllerListSharedInventoryPool = (
+    listSharedInventoryPoolDto: ListSharedInventoryPoolDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerListSharedInventoryPool200>>,) => {
+      return customInstance<SysStockControllerListSharedInventoryPool200>(
+      {url: `/sys-stock/list-shared-inventory-pool`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: listSharedInventoryPoolDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 解除SKU的共享库存池关系
+ */
+const sysStockControllerRemoveSharedInventoryPool = (
+    removeSharedInventoryPoolDto: RemoveSharedInventoryPoolDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerRemoveSharedInventoryPool200>>,) => {
+      return customInstance<SysStockControllerRemoveSharedInventoryPool200>(
+      {url: `/sys-stock/remove-shared-inventory-pool`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: removeSharedInventoryPoolDto
+    },
+      options);
+    }
+  
+return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost,sysGoodsControllerImportEmgSkuMapping,sysGoodsControllerExportGoods,sysStockControllerImportJingCangStock,sysStockControllerListYunCangStock,sysStockControllerStatisticsYunCangStock,sysStockControllerGetYunCangInventoryPoolInfo,sysStockControllerListJingCangStock,sysStockControllerStatisticsJingCangStock,sysStockControllerSetYunCangReorderThreshold,sysStockControllerSetReorderThreshold,sysStockControllerCreatePurchaseOrder,sysStockControllerListPurchaseOrder,sysStockControllerUpdatePurchaseOrder,sysStockControllerConfirmPurchaseOrderByDepartment,sysStockControllerConfirmPurchaseOrderByFinance,sysStockControllerExportYunCangStock,sysStockControllerExportPurchaseOrder,sysStockControllerExportJingCangStock,sysStockControllerSetSharedInventoryPool,sysStockControllerListSharedInventoryPool,sysStockControllerRemoveSharedInventoryPool}};
 export type SysAuthControllerLoginResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerLogin']>>>
 export type SysAuthControllerRefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerRefresh']>>>
 export type SysAuthControllerGetUserInfoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerGetUserInfo']>>>
@@ -846,3 +894,6 @@ export type SysStockControllerConfirmPurchaseOrderByFinanceResult = NonNullable<
 export type SysStockControllerExportYunCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerExportYunCangStock']>>>
 export type SysStockControllerExportPurchaseOrderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerExportPurchaseOrder']>>>
 export type SysStockControllerExportJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerExportJingCangStock']>>>
+export type SysStockControllerSetSharedInventoryPoolResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerSetSharedInventoryPool']>>>
+export type SysStockControllerListSharedInventoryPoolResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerListSharedInventoryPool']>>>
+export type SysStockControllerRemoveSharedInventoryPoolResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerRemoveSharedInventoryPool']>>>

@@ -27,22 +27,13 @@ export type ListApiFn<TData, TFilters> = (
 ) => Promise<{ data?: { list?: TData[]; total?: number } }>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type CreateApiFn<TCreateDto> = (
-  data: TCreateDto,
-  options?: any,
-) => Promise<unknown>;
+export type CreateApiFn<TCreateDto> = (data: TCreateDto, options?: any) => Promise<unknown>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type UpdateApiFn<TUpdateDto> = (
-  data: TUpdateDto,
-  options?: any,
-) => Promise<unknown>;
+export type UpdateApiFn<TUpdateDto> = (data: TUpdateDto, options?: any) => Promise<unknown>;
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type DeleteApiFn = (
-  id: string,
-  options?: any,
-) => Promise<unknown>;
+export type DeleteApiFn = (id: string, options?: any) => Promise<unknown>;
 
 /** useCrudTable 配置 */
 export interface UseCrudTableOptions<TData, TFilters extends PaginationParams> {
@@ -109,7 +100,9 @@ export interface UseCrudModalReturn<TData> {
   /** 关闭弹窗 */
   close: () => void;
   /** 提交处理 */
-  handleSubmit: <TFormValues>(transformFn?: (values: TFormValues, isEdit: boolean, editData: TData | null) => unknown) => Promise<void>;
+  handleSubmit: <TFormValues>(
+    transformFn?: (values: TFormValues, isEdit: boolean, editData: TData | null) => unknown,
+  ) => Promise<void>;
 }
 
 /** useTableSelection 返回值 */
@@ -170,17 +163,19 @@ export interface ActionConfig<TData = unknown> {
 /** 工具栏按钮配置 */
 export interface ToolbarActionConfig {
   /** 按钮标识 */
-  key: string;
+  key?: string;
   /** 按钮文案 */
   label: string;
   /** 图标 */
-  icon?: ReactNode;
+  icon?: React.ReactElement;
   /** 是否危险按钮 */
   danger?: boolean;
   /** 点击回调 */
   onClick?: () => void | Promise<void>;
   /** 是否禁用 */
   disabled?: boolean;
+  /** 按钮主题 */
+  theme?: 'default' | 'primary' | 'danger' | 'warning' | 'success';
 }
 
 /** CrudSearchForm Props */
@@ -313,4 +308,3 @@ export interface CrudPageProps<
   /** 删除确认文案 */
   deleteConfirmText?: string;
 }
-

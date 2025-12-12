@@ -138,6 +138,13 @@ const routes: IRouter[] = [
               title: '采购订单',
             },
           },
+          {
+            path: 'inventory-relation',
+            Component: lazy(() => import('pages/Business/StockManager/YunCang/InventoryRelation')),
+            meta: {
+              title: '库存关系',
+            },
+          },
         ],
       },
     ],

@@ -9,16 +9,20 @@ import * as xlsx from 'xlsx'
 import { ReqUser } from '../sys_auth/types/request'
 import { InventoryPoolInfoQueryDto } from './dto/inventory-pool-info-query.dto'
 import { JingCangStockQueryDto } from './dto/jing-cang-stock-query.dto'
+import { ListSharedInventoryPoolDto } from './dto/list-shared-inventory-pool.dto'
 import { PurchaseOrderConfirmDto } from './dto/purchase-order-confirm.dto'
 import { PurchaseOrderCreateDto } from './dto/purchase-order-create.dto'
 import { PurchaseOrderQueryDto } from './dto/purchase-order-query.dto'
 import { PurchaseOrderUpdateDto } from './dto/purchase-order-update.dto'
+import { RemoveSharedInventoryPoolDto } from './dto/remove-shared-inventory-pool.dto'
 import { SetReorderThresholdDto } from './dto/set-reorder-threshold.dto'
+import { SetSharedInventoryPoolDto } from './dto/set-shared-inventory-pool.dto'
 import { SetYunCangReorderThresholdDto } from './dto/set-yun-cang-reorder-threshold.dto'
 import { YunCangStockQueryDto } from './dto/yun-cang-stock-query.dto'
 import { InventoryPoolInfoEntity } from './entities/inventory-pool-info.entity'
 import { PurchaseDetailEntity } from './entities/purchase-detail.entity'
 import { PurchaseOrderEntity } from './entities/purchase-order.entity'
+import { SharedInventoryPoolEntity } from './entities/shared-inventory-pool.entity'
 import { YunCangStockGroupEntity } from './entities/yun-cang-stock-group.entity'
 import { YunCangStockStatisticsEntity } from './entities/yun-cang-stock-statistics.entity'
 
@@ -989,6 +993,337 @@ export class SysStockService {
       isIndependent,
       sharedGoods,
     }
+  }
+
+  /**
+   * 设置多个SKU共用一个库存池
+   * @param dto 设置参数
+   * @returns 库存池信息
+   */
+  async setSharedInventoryPool(dto: SetSharedInventoryPoolDto): Promise<SharedInventoryPoolEntity> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 1. 查询所有SKU对应的商品
+    const goods = await this.prisma.goods.findMany({
+      where: { sku: { in: dto.skus }, AND: [accessibleBy(ability).Goods] },
+      select: { id: true, sku: true },
+    })
+
+    if (goods.length !== dto.skus.length) {
+      throw new NotFoundException('存在无权操作的商品或SKU不存在')
+    }
+
+    const goodIds = goods.map((g) => g.id)
+    const goodsMap = new Map(goods.map((g) => [g.id, g.sku]))
+
+    // 2. 查询这些商品对应的库存信息
+    const stockInfos = await this.prisma.yunCangStockInfo.findMany({
+      where: { goodId: { in: goodIds } },
+      include: { yunCangInventoryPool: true },
+    })
+
+    // 3. 确保所有商品的库存记录都存在，并收集现有库存池的数量
+    let totalQuantity = 0
+    const existingPoolIds = new Set<string>()
+
+    for (const goodId of goodIds) {
+      let stockInfo = stockInfos.find((s) => s.goodId === goodId)
+      if (!stockInfo) {
+        stockInfo = await this.prisma.yunCangStockInfo.create({
+          data: {
+            goodId,
+            dailySalesQuantity: 0,
+            monthlySalesQuantity: 0,
+            reorderThreshold: 10,
+            sluggishDays: 0,
+          },
+          include: { yunCangInventoryPool: true },
+        })
+      }
+
+      // 如果该SKU已经有库存池，记录其数量
+      if (stockInfo.yunCangInventoryPool) {
+        const poolId = stockInfo.yunCangInventoryPool.id
+        existingPoolIds.add(poolId)
+        // 如果这个库存池只有这一个SKU使用，则累加其数量
+        const poolStockCount = await this.prisma.yunCangStockInfo.count({
+          where: { yunCangInventoryPoolId: poolId },
+        })
+        if (poolStockCount === 1) {
+          totalQuantity += stockInfo.yunCangInventoryPool.quantity
+        }
+      }
+    }
+
+    // 4. 创建或使用统一的库存池
+    let targetPoolId: string
+    const allStockInfos = await this.prisma.yunCangStockInfo.findMany({
+      where: { goodId: { in: goodIds } },
+      include: { yunCangInventoryPool: true },
+    })
+
+    // 检查是否已经有一个共同的库存池（所有SKU都指向同一个库存池）
+    const poolIds = allStockInfos.map((s) => s.yunCangInventoryPool?.id).filter((id): id is string => id !== undefined && id !== null)
+    const uniquePoolIds = Array.from(new Set(poolIds))
+
+    if (uniquePoolIds.length === 1 && uniquePoolIds[0] && poolIds.length === goodIds.length) {
+      // 已经共用一个库存池，使用现有的
+      targetPoolId = uniquePoolIds[0]
+    } else {
+      // 需要创建新的库存池或合并现有库存池
+      await this.prisma.$transaction(async (tx) => {
+        // 如果所有SKU已经共用一个库存池，但数量不匹配，需要重新计算
+        if (uniquePoolIds.length === 1 && uniquePoolIds[0]) {
+          // 使用现有库存池，但需要合并数量
+          targetPoolId = uniquePoolIds[0]
+          // 计算所有独立库存池的数量总和
+          let mergeQuantity = 0
+          for (const oldPoolId of existingPoolIds) {
+            if (oldPoolId !== targetPoolId) {
+              const poolStockCount = await tx.yunCangStockInfo.count({
+                where: { yunCangInventoryPoolId: oldPoolId },
+              })
+              if (poolStockCount === 1) {
+                const oldPool = await tx.yunCangInventoryPool.findUnique({
+                  where: { id: oldPoolId },
+                  select: { quantity: true },
+                })
+                if (oldPool) {
+                  mergeQuantity += oldPool.quantity
+                }
+              }
+            }
+          }
+          // 更新库存池数量
+          if (mergeQuantity > 0) {
+            await tx.yunCangInventoryPool.update({
+              where: { id: targetPoolId },
+              data: { quantity: { increment: mergeQuantity } },
+            })
+          }
+        } else {
+          // 创建新的库存池
+          const newPool = await tx.yunCangInventoryPool.create({
+            data: { quantity: totalQuantity },
+          })
+          targetPoolId = newPool.id
+        }
+
+        // 将所有SKU的库存信息关联到目标库存池
+        for (const goodId of goodIds) {
+          await tx.yunCangStockInfo.update({
+            where: { goodId },
+            data: { yunCangInventoryPoolId: targetPoolId },
+          })
+        }
+
+        // 删除不再使用的旧库存池（如果旧库存池只有一个SKU使用）
+        for (const oldPoolId of existingPoolIds) {
+          if (oldPoolId !== targetPoolId) {
+            const remainingCount = await tx.yunCangStockInfo.count({
+              where: { yunCangInventoryPoolId: oldPoolId },
+            })
+            if (remainingCount === 0) {
+              await tx.yunCangInventoryPool.delete({ where: { id: oldPoolId } })
+            }
+          }
+        }
+      })
+    }
+
+    // 5. 查询并返回库存池信息
+    const pool = await this.prisma.yunCangInventoryPool.findUnique({
+      where: { id: targetPoolId },
+      include: {
+        stockInfos: {
+          include: {
+            good: {
+              select: {
+                id: true,
+                sku: true,
+                departmentName: true,
+                shopName: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    if (!pool) {
+      throw new NotFoundException('库存池不存在')
+    }
+
+    return {
+      id: pool.id,
+      quantity: pool.quantity,
+      skuCount: pool.stockInfos.length,
+      goods: pool.stockInfos.map((s) => ({
+        goodId: s.good.id,
+        sku: s.good.sku,
+        departmentName: s.good.departmentName,
+        shopName: s.good.shopName,
+      })),
+      createdAt: pool.createdAt,
+      updatedAt: pool.updatedAt,
+    }
+  }
+
+  /**
+   * 解除SKU的共享库存池关系
+   * @param dto 解除参数
+   * @returns 是否成功
+   */
+  async removeSharedInventoryPool(dto: RemoveSharedInventoryPoolDto): Promise<boolean> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 1. 查询SKU对应的商品
+    const good = await this.prisma.goods.findFirst({
+      where: { sku: dto.sku, AND: [accessibleBy(ability).Goods] },
+      select: { id: true, sku: true },
+    })
+
+    if (!good) {
+      throw new NotFoundException('商品不存在或无权操作')
+    }
+
+    // 2. 查询该商品的库存信息
+    let stockInfo = await this.prisma.yunCangStockInfo.findUnique({
+      where: { goodId: good.id },
+      include: { yunCangInventoryPool: { include: { stockInfos: true } } },
+    })
+
+    // 如果库存信息不存在，创建它
+    if (!stockInfo) {
+      stockInfo = await this.prisma.yunCangStockInfo.create({
+        data: {
+          goodId: good.id,
+          dailySalesQuantity: 0,
+          monthlySalesQuantity: 0,
+          reorderThreshold: 10,
+          sluggishDays: 0,
+        },
+        include: { yunCangInventoryPool: { include: { stockInfos: true } } },
+      })
+    }
+
+    // 3. 检查是否在共享库存池中
+    const pool = stockInfo.yunCangInventoryPool
+    if (!pool) {
+      // 如果不在任何库存池中，已经是独立状态，直接返回成功
+      return true
+    }
+
+    // 4. 检查是否是共享库存池（多个SKU共用）
+    const poolStockCount = pool.stockInfos.length
+    if (poolStockCount <= 1) {
+      // 如果只有一个SKU使用该库存池，已经是独立状态，直接返回成功
+      return true
+    }
+
+    // 5. 解除共享关系：为该SKU创建新的独立库存池
+    await this.prisma.$transaction(async (tx) => {
+      // 创建新的独立库存池（数量为0）
+      const newPool = await tx.yunCangInventoryPool.create({
+        data: { quantity: 0 },
+      })
+
+      // 将该SKU的库存信息关联到新库存池
+      await tx.yunCangStockInfo.update({
+        where: { goodId: good.id },
+        data: { yunCangInventoryPoolId: newPool.id },
+      })
+
+      // 如果原共享库存池只剩下一个SKU，也需要为那个SKU创建独立库存池
+      const remainingStockInfos = pool.stockInfos.filter((s) => s.goodId !== good.id)
+      if (remainingStockInfos.length === 1) {
+        const remainingStockInfo = remainingStockInfos[0]
+        const remainingPool = await tx.yunCangInventoryPool.create({
+          data: { quantity: pool.quantity }, // 保留原库存池的数量
+        })
+        await tx.yunCangStockInfo.update({
+          where: { id: remainingStockInfo.id },
+          data: { yunCangInventoryPoolId: remainingPool.id },
+        })
+        // 删除原共享库存池
+        await tx.yunCangInventoryPool.delete({ where: { id: pool.id } })
+      }
+    })
+
+    return true
+  }
+
+  /**
+   * 查询库存池列表（只显示多个SKU共用的库存池）
+   * @param query 查询参数
+   * @returns 库存池列表
+   */
+  async listSharedInventoryPool(query: ListSharedInventoryPoolDto) {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 1. 查询所有库存池，并关联库存信息
+    const allPools = await this.prisma.yunCangInventoryPool.findMany({
+      include: {
+        stockInfos: {
+          include: {
+            good: {
+              select: {
+                id: true,
+                sku: true,
+                departmentName: true,
+                shopName: true,
+              },
+            },
+          },
+        },
+      },
+    })
+
+    // 2. 过滤出多个SKU共用的库存池（stockInfos.length > 1）
+    const sharedPools = allPools.filter((pool) => pool.stockInfos.length > 1)
+
+    // 3. 检查权限，只返回有权限访问的商品对应的库存池
+    const accessibleGoodIds = await this.prisma.goods.findMany({
+      where: { AND: [accessibleBy(ability).Goods] },
+      select: { id: true },
+    })
+    const accessibleGoodIdSet = new Set(accessibleGoodIds.map((g) => g.id))
+
+    const filteredPools = sharedPools.filter((pool) => pool.stockInfos.some((s) => accessibleGoodIdSet.has(s.goodId)))
+
+    // 4. 根据SKU关键词过滤
+    let skuFilteredPools = filteredPools
+    if (query.skuKeyword) {
+      const skuKeyword = query.skuKeyword.trim().toLowerCase()
+      skuFilteredPools = filteredPools.filter((pool) =>
+        pool.stockInfos.some((s) => s.good.sku.toLowerCase().includes(skuKeyword)),
+      )
+    }
+
+    // 5. 转换为实体格式
+    const rows: SharedInventoryPoolEntity[] = skuFilteredPools.map((pool) => ({
+      id: pool.id,
+      quantity: pool.quantity,
+      skuCount: pool.stockInfos.length,
+      goods: pool.stockInfos.map((s) => ({
+        goodId: s.good.id,
+        sku: s.good.sku,
+        departmentName: s.good.departmentName,
+        shopName: s.good.shopName,
+      })),
+      createdAt: pool.createdAt,
+      updatedAt: pool.updatedAt,
+    }))
+
+    // 6. 分页
+    const startIndex = (query.current - 1) * query.pageSize
+    const endIndex = startIndex + query.pageSize
+    const paginatedRows = rows.slice(startIndex, endIndex)
+
+    return { rows: paginatedRows, total: rows.length }
   }
 
   /**

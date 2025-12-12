@@ -14,15 +14,21 @@ import type {
   CreateUserDto,
   DeptQueryDto,
   GoodsQueryDto,
+  InventoryPoolInfoQueryDto,
   JingCangStockQueryDto,
   LinkMemberDto,
   LoginDto,
   MembersQueryDto,
+  PurchaseOrderConfirmDto,
+  PurchaseOrderCreateDto,
+  PurchaseOrderQueryDto,
+  PurchaseOrderUpdateDto,
   RefreshTokenDto,
   RemoveMemberDto,
   RoleQueryDto,
   SetLeadersDto,
   SetReorderThresholdDto,
+  SetYunCangReorderThresholdDto,
   SysAuthControllerGetUserInfo200,
   SysAuthControllerGetUserPermissions200,
   SysAuthControllerLogin200,
@@ -54,11 +60,20 @@ import type {
   SysRoleControllerGetRole200,
   SysRoleControllerGetRoles200,
   SysRoleControllerUpdateRole200,
+  SysStockControllerConfirmPurchaseOrderByDepartment200,
+  SysStockControllerConfirmPurchaseOrderByFinance200,
+  SysStockControllerCreatePurchaseOrder200,
+  SysStockControllerGetYunCangInventoryPoolInfo200,
   SysStockControllerImportJingCangStock200,
   SysStockControllerImportJingCangStockBody,
   SysStockControllerListJingCangStock200,
+  SysStockControllerListPurchaseOrder200,
+  SysStockControllerListYunCangStock200,
   SysStockControllerSetReorderThreshold200,
+  SysStockControllerSetYunCangReorderThreshold200,
   SysStockControllerStatisticsJingCangStock200,
+  SysStockControllerStatisticsYunCangStock200,
+  SysStockControllerUpdatePurchaseOrder200,
   SysUserControllerCreateUser200,
   SysUserControllerDeleteUser200,
   SysUserControllerGetUser200,
@@ -68,7 +83,8 @@ import type {
   UpdateGoodsDto,
   UpdateRoleBodyDto,
   UpdateUserBodyDto,
-  UserQueryDto
+  UserQueryDto,
+  YunCangStockQueryDto
 } from './model';
 
 import { customInstance } from '../orvalMutator';
@@ -566,6 +582,48 @@ formData.append(`file`, sysStockControllerImportJingCangStockBody.file)
     }
   
 /**
+ * @summary 查询云仓库存信息列表
+ */
+const sysStockControllerListYunCangStock = (
+    yunCangStockQueryDto: YunCangStockQueryDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerListYunCangStock200>>,) => {
+      return customInstance<SysStockControllerListYunCangStock200>(
+      {url: `/sys-stock/list-yun-cang-stock`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: yunCangStockQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 统计云仓库存信息
+ */
+const sysStockControllerStatisticsYunCangStock = (
+    yunCangStockQueryDto: YunCangStockQueryDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerStatisticsYunCangStock200>>,) => {
+      return customInstance<SysStockControllerStatisticsYunCangStock200>(
+      {url: `/sys-stock/statistics-yun-cang-stock`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: yunCangStockQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 查询云仓库存池信息
+ */
+const sysStockControllerGetYunCangInventoryPoolInfo = (
+    inventoryPoolInfoQueryDto: InventoryPoolInfoQueryDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerGetYunCangInventoryPoolInfo200>>,) => {
+      return customInstance<SysStockControllerGetYunCangInventoryPoolInfo200>(
+      {url: `/sys-stock/get-yun-cang-inventory-pool-info`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: inventoryPoolInfoQueryDto
+    },
+      options);
+    }
+  
+/**
  * @summary 查询京仓库存信息列表（按商品分组）
  */
 const sysStockControllerListJingCangStock = (
@@ -594,6 +652,20 @@ const sysStockControllerStatisticsJingCangStock = (
     }
   
 /**
+ * @summary 设置云仓补货预警阈值
+ */
+const sysStockControllerSetYunCangReorderThreshold = (
+    setYunCangReorderThresholdDto: SetYunCangReorderThresholdDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerSetYunCangReorderThreshold200>>,) => {
+      return customInstance<SysStockControllerSetYunCangReorderThreshold200>(
+      {url: `/sys-stock/set-yun-cang-reorder-threshold`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: setYunCangReorderThresholdDto
+    },
+      options);
+    }
+  
+/**
  * @summary 设置补货预警阈值
  */
 const sysStockControllerSetReorderThreshold = (
@@ -603,6 +675,106 @@ const sysStockControllerSetReorderThreshold = (
       {url: `/sys-stock/set-reorder-threshold`, method: 'POST',
       headers: {'Content-Type': 'application/json', },
       data: setReorderThresholdDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 创建采购订单
+ */
+const sysStockControllerCreatePurchaseOrder = (
+    purchaseOrderCreateDto: PurchaseOrderCreateDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerCreatePurchaseOrder200>>,) => {
+      return customInstance<SysStockControllerCreatePurchaseOrder200>(
+      {url: `/sys-stock/create-purchase-order`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: purchaseOrderCreateDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 查询采购订单
+ */
+const sysStockControllerListPurchaseOrder = (
+    purchaseOrderQueryDto: PurchaseOrderQueryDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerListPurchaseOrder200>>,) => {
+      return customInstance<SysStockControllerListPurchaseOrder200>(
+      {url: `/sys-stock/list-purchase-order`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: purchaseOrderQueryDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 更新采购订单
+ */
+const sysStockControllerUpdatePurchaseOrder = (
+    purchaseOrderUpdateDto: PurchaseOrderUpdateDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerUpdatePurchaseOrder200>>,) => {
+      return customInstance<SysStockControllerUpdatePurchaseOrder200>(
+      {url: `/sys-stock/update-purchase-order`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: purchaseOrderUpdateDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 部门确认采购订单
+ */
+const sysStockControllerConfirmPurchaseOrderByDepartment = (
+    purchaseOrderConfirmDto: PurchaseOrderConfirmDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerConfirmPurchaseOrderByDepartment200>>,) => {
+      return customInstance<SysStockControllerConfirmPurchaseOrderByDepartment200>(
+      {url: `/sys-stock/confirm-purchase-order-by-department`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: purchaseOrderConfirmDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 财务确认采购订单
+ */
+const sysStockControllerConfirmPurchaseOrderByFinance = (
+    purchaseOrderConfirmDto: PurchaseOrderConfirmDto,
+ options?: SecondParameter<typeof customInstance<SysStockControllerConfirmPurchaseOrderByFinance200>>,) => {
+      return customInstance<SysStockControllerConfirmPurchaseOrderByFinance200>(
+      {url: `/sys-stock/confirm-purchase-order-by-finance`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: purchaseOrderConfirmDto
+    },
+      options);
+    }
+  
+/**
+ * @summary 导出云仓库存信息
+ */
+const sysStockControllerExportYunCangStock = (
+    yunCangStockQueryDto: YunCangStockQueryDto,
+ options?: SecondParameter<typeof customInstance<Blob>>,) => {
+      return customInstance<Blob>(
+      {url: `/sys-stock/export-yun-cang-stock`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: yunCangStockQueryDto,
+        responseType: 'blob'
+    },
+      options);
+    }
+  
+/**
+ * @summary 导出采购订单
+ */
+const sysStockControllerExportPurchaseOrder = (
+    purchaseOrderQueryDto: PurchaseOrderQueryDto,
+ options?: SecondParameter<typeof customInstance<Blob>>,) => {
+      return customInstance<Blob>(
+      {url: `/sys-stock/export-purchase-order`, method: 'POST',
+      headers: {'Content-Type': 'application/json', },
+      data: purchaseOrderQueryDto,
+        responseType: 'blob'
     },
       options);
     }
@@ -622,7 +794,7 @@ const sysStockControllerExportJingCangStock = (
       options);
     }
   
-return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost,sysGoodsControllerImportEmgSkuMapping,sysGoodsControllerExportGoods,sysStockControllerImportJingCangStock,sysStockControllerListJingCangStock,sysStockControllerStatisticsJingCangStock,sysStockControllerSetReorderThreshold,sysStockControllerExportJingCangStock}};
+return {sysAuthControllerLogin,sysAuthControllerRefresh,sysAuthControllerGetUserInfo,sysAuthControllerGetUserPermissions,sysUserControllerGetUsers,sysUserControllerCreateUser,sysUserControllerGetUser,sysUserControllerDeleteUser,sysUserControllerUpdateUser,sysRoleControllerGetRoles,sysRoleControllerCreateRole,sysRoleControllerGetPermissions,sysRoleControllerGetRole,sysRoleControllerDeleteRole,sysRoleControllerUpdateRole,sysDeptControllerCreateDept,sysDeptControllerUpdateDept,sysDeptControllerGetDeptList,sysDeptControllerGetDeptTree,sysDeptControllerGetDept,sysDeptControllerDeleteDept,sysDeptControllerGetDeptMembers,sysDeptControllerAddMember,sysDeptControllerLinkMember,sysDeptControllerRemoveMember,sysDeptControllerSetLeaders,sysGoodsControllerImportGoods,sysGoodsControllerGetGoodsList,sysGoodsControllerUpdateGoods,sysGoodsControllerDeleteGoods,sysGoodsControllerGetChangeLogs,sysGoodsControllerAddExtraCost,sysGoodsControllerDeleteExtraCost,sysGoodsControllerImportEmgSkuMapping,sysGoodsControllerExportGoods,sysStockControllerImportJingCangStock,sysStockControllerListYunCangStock,sysStockControllerStatisticsYunCangStock,sysStockControllerGetYunCangInventoryPoolInfo,sysStockControllerListJingCangStock,sysStockControllerStatisticsJingCangStock,sysStockControllerSetYunCangReorderThreshold,sysStockControllerSetReorderThreshold,sysStockControllerCreatePurchaseOrder,sysStockControllerListPurchaseOrder,sysStockControllerUpdatePurchaseOrder,sysStockControllerConfirmPurchaseOrderByDepartment,sysStockControllerConfirmPurchaseOrderByFinance,sysStockControllerExportYunCangStock,sysStockControllerExportPurchaseOrder,sysStockControllerExportJingCangStock}};
 export type SysAuthControllerLoginResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerLogin']>>>
 export type SysAuthControllerRefreshResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerRefresh']>>>
 export type SysAuthControllerGetUserInfoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysAuthControllerGetUserInfo']>>>
@@ -659,7 +831,18 @@ export type SysGoodsControllerDeleteExtraCostResult = NonNullable<Awaited<Return
 export type SysGoodsControllerImportEmgSkuMappingResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerImportEmgSkuMapping']>>>
 export type SysGoodsControllerExportGoodsResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysGoodsControllerExportGoods']>>>
 export type SysStockControllerImportJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerImportJingCangStock']>>>
+export type SysStockControllerListYunCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerListYunCangStock']>>>
+export type SysStockControllerStatisticsYunCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerStatisticsYunCangStock']>>>
+export type SysStockControllerGetYunCangInventoryPoolInfoResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerGetYunCangInventoryPoolInfo']>>>
 export type SysStockControllerListJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerListJingCangStock']>>>
 export type SysStockControllerStatisticsJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerStatisticsJingCangStock']>>>
+export type SysStockControllerSetYunCangReorderThresholdResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerSetYunCangReorderThreshold']>>>
 export type SysStockControllerSetReorderThresholdResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerSetReorderThreshold']>>>
+export type SysStockControllerCreatePurchaseOrderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerCreatePurchaseOrder']>>>
+export type SysStockControllerListPurchaseOrderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerListPurchaseOrder']>>>
+export type SysStockControllerUpdatePurchaseOrderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerUpdatePurchaseOrder']>>>
+export type SysStockControllerConfirmPurchaseOrderByDepartmentResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerConfirmPurchaseOrderByDepartment']>>>
+export type SysStockControllerConfirmPurchaseOrderByFinanceResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerConfirmPurchaseOrderByFinance']>>>
+export type SysStockControllerExportYunCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerExportYunCangStock']>>>
+export type SysStockControllerExportPurchaseOrderResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerExportPurchaseOrder']>>>
 export type SysStockControllerExportJingCangStockResult = NonNullable<Awaited<ReturnType<ReturnType<typeof getNestStarter>['sysStockControllerExportJingCangStock']>>>

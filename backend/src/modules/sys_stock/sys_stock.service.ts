@@ -7,8 +7,20 @@ import defineAbilityFor from 'src/shared/casl/casl-ability.factory'
 import { NestPrisma, NestPrismaServiceType } from 'src/shared/prisma/prisma.extension.decorator'
 import * as xlsx from 'xlsx'
 import { ReqUser } from '../sys_auth/types/request'
+import { InventoryPoolInfoQueryDto } from './dto/inventory-pool-info-query.dto'
 import { JingCangStockQueryDto } from './dto/jing-cang-stock-query.dto'
+import { PurchaseOrderConfirmDto } from './dto/purchase-order-confirm.dto'
+import { PurchaseOrderCreateDto } from './dto/purchase-order-create.dto'
+import { PurchaseOrderQueryDto } from './dto/purchase-order-query.dto'
+import { PurchaseOrderUpdateDto } from './dto/purchase-order-update.dto'
 import { SetReorderThresholdDto } from './dto/set-reorder-threshold.dto'
+import { SetYunCangReorderThresholdDto } from './dto/set-yun-cang-reorder-threshold.dto'
+import { YunCangStockQueryDto } from './dto/yun-cang-stock-query.dto'
+import { InventoryPoolInfoEntity } from './entities/inventory-pool-info.entity'
+import { PurchaseDetailEntity } from './entities/purchase-detail.entity'
+import { PurchaseOrderEntity } from './entities/purchase-order.entity'
+import { YunCangStockGroupEntity } from './entities/yun-cang-stock-group.entity'
+import { YunCangStockStatisticsEntity } from './entities/yun-cang-stock-statistics.entity'
 
 @Injectable()
 export class SysStockService {
@@ -17,6 +29,45 @@ export class SysStockService {
     private readonly prisma: PrismaService,
     @NestPrisma() private readonly nestPrisma: NestPrismaServiceType,
   ) {}
+
+  /**
+   * 确保云仓库存记录存在，如果不存在则创建
+   * @param goodId 商品ID
+   * @param ability CASL权限能力
+   * @returns 库存记录ID
+   */
+  private async ensureYunCangStockInfoExists(goodId: string, ability: any): Promise<string> {
+    // 先检查商品是否存在且有权限
+    const good = await this.prisma.goods.findFirst({
+      where: { AND: [{ id: goodId }, accessibleBy(ability).Goods] },
+      select: { id: true },
+    })
+    if (!good) {
+      throw new NotFoundException('商品不存在或无权操作')
+    }
+
+    // 检查库存记录是否存在
+    let stockInfo = await this.prisma.yunCangStockInfo.findUnique({
+      where: { goodId },
+      select: { id: true },
+    })
+
+    // 如果不存在，则创建
+    if (!stockInfo) {
+      stockInfo = await this.prisma.yunCangStockInfo.create({
+        data: {
+          goodId,
+          dailySalesQuantity: 0,
+          monthlySalesQuantity: 0,
+          reorderThreshold: 10,
+          sluggishDays: 0,
+        },
+        select: { id: true },
+      })
+    }
+
+    return stockInfo.id
+  }
 
   /**
    * 导入京仓库存信息
@@ -615,6 +666,644 @@ export class SysStockService {
       totalDailySalesQuantity,
       totalMonthlySalesQuantity,
       totalPurchaseCostValue,
+    }
+  }
+
+  /**
+   * 查询云仓库存信息列表
+   * @param query 查询参数
+   * @returns 云仓库存列表和总数
+   */
+  async listYunCangStock(query: YunCangStockQueryDto) {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 1. 先查询所有符合条件的商品（基于商品信息）
+    const allGoods = await this.prisma.goods.findMany({
+      where: {
+        AND: [
+          {
+            departmentId: query.departmentId || undefined,
+            sku: query.skuKeyword ? { contains: query.skuKeyword } : undefined,
+            responsiblePerson: query.responsiblePerson ? { contains: query.responsiblePerson } : undefined,
+            shopName: query.shopName ? { contains: query.shopName } : undefined,
+          },
+          accessibleBy(ability).Goods,
+        ],
+      },
+      select: {
+        id: true,
+        departmentName: true,
+        shopName: true,
+        sku: true,
+        responsiblePerson: true,
+        shelfNumber: true,
+        imageUrl: true,
+        inboundBarcode: true,
+        spec: true,
+      },
+    })
+
+    const goodIds = allGoods.map((good) => good.id)
+
+    // 2. 批量查询这些商品的库存信息
+    const stockInfos = await this.prisma.yunCangStockInfo.findMany({
+      where: {
+        goodId: { in: goodIds },
+      },
+      select: {
+        goodId: true,
+        dailySalesQuantity: true,
+        monthlySalesQuantity: true,
+        reorderThreshold: true,
+        sluggishDays: true,
+        createdAt: true,
+        yunCangInventoryPool: { select: { quantity: true } },
+      },
+    })
+
+    // 3. 构建库存信息映射
+    const stockInfoMap = new Map(
+      stockInfos.map((info) => [
+        info.goodId,
+        {
+          dailySalesQuantity: info.dailySalesQuantity,
+          monthlySalesQuantity: info.monthlySalesQuantity,
+          reorderThreshold: info.reorderThreshold,
+          sluggishDays: info.sluggishDays,
+          actualQuantity: info.yunCangInventoryPool?.quantity ?? 0,
+          createdAt: info.createdAt,
+        },
+      ]),
+    )
+
+    // 4. 合并商品信息和库存信息
+    let rows = allGoods.map((good) => {
+      const stockInfo = stockInfoMap.get(good.id)
+      return {
+        goodId: good.id,
+        departmentName: good.departmentName,
+        shopName: good.shopName,
+        sku: good.sku,
+        responsiblePerson: good.responsiblePerson,
+        shelfNumber: good.shelfNumber,
+        imageUrl: good.imageUrl,
+        inboundBarcode: good.inboundBarcode,
+        spec: good.spec,
+        dailySalesQuantity: stockInfo?.dailySalesQuantity ?? 0,
+        monthlySalesQuantity: stockInfo?.monthlySalesQuantity ?? 0,
+        reorderThreshold: stockInfo?.reorderThreshold ?? 10,
+        sluggishDays: stockInfo?.sluggishDays ?? 0,
+        actualQuantity: stockInfo?.actualQuantity ?? 0,
+        createdAt: stockInfo?.createdAt ?? new Date(),
+      }
+    })
+
+    // 5. 应用筛选条件
+    if (query.isLowStock === true) {
+      rows = rows.filter((row) => row.actualQuantity <= row.reorderThreshold)
+    } else if (query.isLowStock === false) {
+      rows = rows.filter((row) => row.actualQuantity > row.reorderThreshold)
+    }
+
+    if (query.isSluggish === true) {
+      rows = rows.filter((row) => row.sluggishDays > 7)
+    } else if (query.isSluggish === false) {
+      rows = rows.filter((row) => row.sluggishDays <= 7)
+    }
+
+    // 6. 排序
+    if (query.sortField) {
+      const order = query.sortOrder === 'asc' ? 1 : -1
+      rows.sort((a, b) => {
+        const aValue = a[query.sortField!]
+        const bValue = b[query.sortField!]
+        if (aValue === bValue) return 0
+        return aValue > bValue ? order : -order
+      })
+    } else {
+      rows.sort((a, b) => (a.createdAt > b.createdAt ? -1 : 1))
+    }
+
+    // 7. 分页
+    const startIndex = (query.current - 1) * query.pageSize
+    const endIndex = startIndex + query.pageSize
+    const pagedRows = rows.slice(startIndex, endIndex).map((row) => {
+      const { createdAt, ...rest } = row
+      return rest
+    })
+
+    return { rows: pagedRows as unknown as YunCangStockGroupEntity[], total: rows.length }
+  }
+
+  /**
+   * 统计云仓库存信息
+   * @param query 查询参数
+   * @returns 统计数据
+   */
+  async statisticsYunCangStock(query: YunCangStockQueryDto): Promise<YunCangStockStatisticsEntity> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 1. 先查询所有符合条件的商品（基于商品信息）
+    const allGoods = await this.prisma.goods.findMany({
+      where: {
+        AND: [
+          {
+            departmentId: query.departmentId || undefined,
+            sku: query.skuKeyword ? { contains: query.skuKeyword } : undefined,
+            responsiblePerson: query.responsiblePerson ? { contains: query.responsiblePerson } : undefined,
+            shopName: query.shopName ? { contains: query.shopName } : undefined,
+          },
+          accessibleBy(ability).Goods,
+        ],
+      },
+      select: {
+        id: true,
+      },
+    })
+
+    const goodIds = allGoods.map((good) => good.id)
+
+    // 2. 批量查询这些商品的库存信息
+    const stockInfos = await this.prisma.yunCangStockInfo.findMany({
+      where: {
+        goodId: { in: goodIds },
+      },
+      select: {
+        goodId: true,
+        dailySalesQuantity: true,
+        monthlySalesQuantity: true,
+        reorderThreshold: true,
+        sluggishDays: true,
+        yunCangInventoryPool: { select: { quantity: true } },
+      },
+    })
+
+    // 3. 构建库存信息映射
+    const stockInfoMap = new Map(
+      stockInfos.map((info) => [
+        info.goodId,
+        {
+          dailySalesQuantity: info.dailySalesQuantity,
+          monthlySalesQuantity: info.monthlySalesQuantity,
+          reorderThreshold: info.reorderThreshold,
+          sluggishDays: info.sluggishDays,
+          actualQuantity: info.yunCangInventoryPool?.quantity ?? 0,
+        },
+      ]),
+    )
+
+    // 4. 合并商品信息和库存信息
+    let rows = allGoods.map((good) => {
+      const stockInfo = stockInfoMap.get(good.id)
+      return {
+        actualQuantity: stockInfo?.actualQuantity ?? 0,
+        dailySalesQuantity: stockInfo?.dailySalesQuantity ?? 0,
+        monthlySalesQuantity: stockInfo?.monthlySalesQuantity ?? 0,
+        reorderThreshold: stockInfo?.reorderThreshold ?? 10,
+        sluggishDays: stockInfo?.sluggishDays ?? 0,
+      }
+    })
+
+    // 5. 应用筛选条件
+    if (query.isLowStock === true) {
+      rows = rows.filter((row) => row.actualQuantity <= row.reorderThreshold)
+    } else if (query.isLowStock === false) {
+      rows = rows.filter((row) => row.actualQuantity > row.reorderThreshold)
+    }
+
+    if (query.isSluggish === true) {
+      rows = rows.filter((row) => row.sluggishDays > 7)
+    } else if (query.isSluggish === false) {
+      rows = rows.filter((row) => row.sluggishDays <= 7)
+    }
+
+    // 6. 计算统计数据
+    const totalStockQuantity = rows.reduce((sum, row) => sum + row.actualQuantity, 0)
+    const totalDailySalesQuantity = rows.reduce((sum, row) => sum + row.dailySalesQuantity, 0)
+    const totalMonthlySalesQuantity = rows.reduce((sum, row) => sum + row.monthlySalesQuantity, 0)
+
+    return {
+      totalStockQuantity,
+      totalDailySalesQuantity,
+      totalMonthlySalesQuantity,
+    }
+  }
+
+  /**
+   * 设置云仓补货预警阈值
+   * @param dto 设置参数
+   * @returns 更新后的库存信息
+   */
+  async setYunCangReorderThreshold(dto: SetYunCangReorderThresholdDto): Promise<YunCangStockGroupEntity> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 确保库存记录存在
+    await this.ensureYunCangStockInfoExists(dto.goodId, ability)
+
+    const updated = await this.prisma.yunCangStockInfo.update({
+      where: { goodId: dto.goodId },
+      data: { reorderThreshold: dto.reorderThreshold },
+      select: {
+        goodId: true,
+        dailySalesQuantity: true,
+        monthlySalesQuantity: true,
+        reorderThreshold: true,
+        sluggishDays: true,
+        createdAt: true,
+        yunCangInventoryPool: { select: { quantity: true } },
+        good: {
+          select: {
+            departmentName: true,
+            shopName: true,
+            sku: true,
+            responsiblePerson: true,
+            shelfNumber: true,
+            imageUrl: true,
+            inboundBarcode: true,
+            spec: true,
+          },
+        },
+      },
+    })
+
+    const actualQuantity = updated.yunCangInventoryPool?.quantity ?? 0
+
+    return {
+      goodId: updated.goodId,
+      departmentName: updated.good.departmentName,
+      shopName: updated.good.shopName,
+      sku: updated.good.sku,
+      responsiblePerson: updated.good.responsiblePerson,
+      shelfNumber: updated.good.shelfNumber,
+      imageUrl: updated.good.imageUrl,
+      inboundBarcode: updated.good.inboundBarcode,
+      spec: updated.good.spec,
+      dailySalesQuantity: updated.dailySalesQuantity,
+      monthlySalesQuantity: updated.monthlySalesQuantity,
+      reorderThreshold: updated.reorderThreshold,
+      sluggishDays: updated.sluggishDays,
+      actualQuantity,
+    }
+  }
+
+  /**
+   * 查询云仓库存池信息
+   * @param query 查询参数
+   * @returns 库存池详情
+   */
+  async getYunCangInventoryPoolInfo(query: InventoryPoolInfoQueryDto): Promise<InventoryPoolInfoEntity> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    // 确保库存记录存在
+    await this.ensureYunCangStockInfoExists(query.goodId, ability)
+
+    const stockInfo = await this.prisma.yunCangStockInfo.findUnique({
+      where: { goodId: query.goodId },
+      include: { yunCangInventoryPool: { include: { stockInfos: { include: { good: true } } } }, good: true },
+    })
+    if (!stockInfo) {
+      throw new NotFoundException('云仓库存不存在')
+    }
+
+    const pool = stockInfo.yunCangInventoryPool
+    const sharedGoods =
+      pool?.stockInfos
+        ?.filter((s) => s.goodId !== stockInfo.goodId)
+        .map((s) => ({
+          goodId: s.goodId,
+          sku: s.good.sku,
+        })) ?? []
+    const actualQuantity = pool?.quantity ?? 0
+    const isIndependent = pool ? pool.stockInfos.length <= 1 : true
+
+    return {
+      goodId: stockInfo.goodId,
+      sku: stockInfo.good.sku,
+      departmentName: stockInfo.good.departmentName,
+      yunCangInventoryPoolId: pool?.id ?? null,
+      actualQuantity,
+      isIndependent,
+      sharedGoods,
+    }
+  }
+
+  /**
+   * 创建采购订单
+   * @param dto 创建参数
+   * @returns 采购订单
+   */
+  async createPurchaseOrder(dto: PurchaseOrderCreateDto): Promise<PurchaseOrderEntity> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    const exists = await this.prisma.purchaseOrder.findUnique({ where: { purchaseBatchNumber: dto.purchaseBatchNumber } })
+    if (exists) {
+      throw new BadRequestException('采购批次号已存在')
+    }
+
+    const skus = dto.purchaseDetails.map((d) => d.sku)
+    const goods = await this.prisma.goods.findMany({
+      where: { sku: { in: skus }, AND: [accessibleBy(ability).Goods] },
+      select: { id: true, sku: true },
+    })
+    if (goods.length !== skus.length) {
+      throw new NotFoundException('存在无权操作的商品或SKU不存在')
+    }
+
+    const goodsMap = new Map(goods.map((g) => [g.sku, g.id]))
+
+    const created = await this.prisma.purchaseOrder.create({
+      data: {
+        purchaseBatchNumber: dto.purchaseBatchNumber,
+        purchaseDetails: {
+          createMany: {
+            data: dto.purchaseDetails.map((d) => ({
+              goodId: goodsMap.get(d.sku)!,
+              quantity: d.quantity,
+              purchaseAmount: d.purchaseAmount,
+              purchaseOrderNumber: d.purchaseOrderNumber,
+              expressNo: d.expressNo,
+            })),
+          },
+        },
+      },
+      include: {
+        purchaseDetails: {
+          include: {
+            good: { select: { sku: true } },
+          },
+        },
+      },
+    })
+
+    return this.mapPurchaseOrder(created)
+  }
+
+  /**
+   * 查询采购订单
+   * @param query 查询参数
+   * @returns 订单列表
+   */
+  async listPurchaseOrder(query: PurchaseOrderQueryDto) {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    const accessibleGoods = await this.prisma.goods.findMany({
+      where: { AND: [accessibleBy(ability).Goods], departmentId: query.departmentId || undefined },
+      select: { id: true },
+    })
+    const accessibleGoodIds = accessibleGoods.map((g) => g.id)
+    if (!accessibleGoodIds.length) {
+      return { rows: [], total: 0 }
+    }
+
+    const { rows, total } = await this.nestPrisma.client.purchaseOrder.findAndCount({
+      where: {
+        purchaseBatchNumber: query.purchaseBatchNumber ? { contains: query.purchaseBatchNumber } : undefined,
+        departmentConfirmStatus: query.departmentConfirmStatus,
+        financeConfirmStatus: query.financeConfirmStatus,
+        createdAt: query.createdAtStart || query.createdAtEnd ? { gte: query.createdAtStart, lte: query.createdAtEnd } : undefined,
+        purchaseDetails: { some: { goodId: { in: accessibleGoodIds } } },
+      },
+      include: {
+        purchaseDetails: {
+          include: { good: { select: { sku: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+      skip: (query.current - 1) * query.pageSize,
+      take: query.pageSize,
+    })
+
+    return { rows: rows.map((row) => this.mapPurchaseOrder(row)), total }
+  }
+
+  /**
+   * 更新采购订单
+   * @param dto 更新参数
+   * @returns 更新后的订单
+   */
+  async updatePurchaseOrder(dto: PurchaseOrderUpdateDto): Promise<PurchaseOrderEntity> {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    const existed = await this.prisma.purchaseOrder.findFirst({
+      where: { AND: [{ id: dto.id }, accessibleBy(ability).PurchaseOrder] },
+      include: { purchaseDetails: true },
+    })
+    if (!existed) {
+      throw new NotFoundException('采购订单不存在或无权操作')
+    }
+
+    if (dto.purchaseBatchNumber && dto.purchaseBatchNumber !== existed.purchaseBatchNumber) {
+      const duplicate = await this.prisma.purchaseOrder.findUnique({ where: { purchaseBatchNumber: dto.purchaseBatchNumber } })
+      if (duplicate) {
+        throw new BadRequestException('采购批次号已存在')
+      }
+    }
+
+    if (existed.departmentConfirmStatus && dto.purchaseDetails) {
+      throw new BadRequestException('部门已确认，无法修改采购详情')
+    }
+
+    if (dto.purchaseDetails) {
+      const skus = dto.purchaseDetails.map((d) => d.sku)
+      const goods = await this.prisma.goods.findMany({
+        where: { sku: { in: skus }, AND: [accessibleBy(ability).Goods] },
+        select: { id: true, sku: true },
+      })
+      if (goods.length !== skus.length) {
+        throw new NotFoundException('存在无权操作的商品或SKU不存在')
+      }
+    }
+
+    const updated = await this.prisma.$transaction(async (tx) => {
+      const order = await tx.purchaseOrder.update({
+        where: { id: dto.id },
+        data: {
+          purchaseBatchNumber: dto.purchaseBatchNumber ?? existed.purchaseBatchNumber,
+        },
+      })
+
+      if (dto.purchaseDetails) {
+        const skus = dto.purchaseDetails.map((d) => d.sku)
+        const goods = await tx.goods.findMany({
+          where: { sku: { in: skus }, AND: [accessibleBy(ability).Goods] },
+          select: { id: true, sku: true },
+        })
+        const goodsMap = new Map(goods.map((g) => [g.sku, g.id]))
+
+        await tx.purchaseDetail.deleteMany({ where: { purchaseOrderId: dto.id } })
+        await tx.purchaseDetail.createMany({
+          data: dto.purchaseDetails.map((d) => ({
+            purchaseOrderId: dto.id,
+            goodId: goodsMap.get(d.sku)!,
+            quantity: d.quantity,
+            purchaseAmount: d.purchaseAmount,
+            purchaseOrderNumber: d.purchaseOrderNumber,
+            expressNo: d.expressNo,
+          })),
+        })
+      }
+
+      return order
+    })
+
+    const result = await this.prisma.purchaseOrder.findUnique({
+      where: { id: updated.id },
+      include: { purchaseDetails: { include: { good: { select: { sku: true } } } } },
+    })
+
+    return this.mapPurchaseOrder(result!)
+  }
+
+  /**
+   * 部门确认采购订单
+   * @param dto 确认参数
+   */
+  async confirmPurchaseOrderByDepartment(dto: PurchaseOrderConfirmDto) {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { AND: [{ id: dto.id }, accessibleBy(ability).PurchaseOrder] },
+      include: { purchaseDetails: { include: { good: true } } },
+    })
+    if (!order) {
+      throw new NotFoundException('采购订单不存在或无权操作')
+    }
+    if (order.departmentConfirmStatus) {
+      return true
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.purchaseOrder.update({ where: { id: order.id }, data: { departmentConfirmStatus: true } })
+
+      for (const detail of order.purchaseDetails) {
+        let stockInfo = await tx.yunCangStockInfo.findUnique({ where: { goodId: detail.goodId } })
+        if (!stockInfo) {
+          stockInfo = await tx.yunCangStockInfo.create({
+            data: {
+              goodId: detail.goodId,
+              dailySalesQuantity: 0,
+              monthlySalesQuantity: 0,
+              reorderThreshold: 10,
+              sluggishDays: 0,
+            },
+          })
+        }
+
+        let poolId = stockInfo.yunCangInventoryPoolId
+        if (!poolId) {
+          const pool = await tx.yunCangInventoryPool.create({ data: { quantity: 0 } })
+          poolId = pool.id
+          await tx.yunCangStockInfo.update({ where: { id: stockInfo.id }, data: { yunCangInventoryPoolId: poolId } })
+        }
+
+        await tx.yunCangInventoryPool.update({
+          where: { id: poolId },
+          data: { quantity: { increment: detail.quantity } },
+        })
+
+        await tx.goodChangeLog.create({
+          data: {
+            goodId: detail.goodId,
+            userId: user.id,
+            username: user.username,
+            content: `采购订单[${order.purchaseBatchNumber}]确认，增加库存[${detail.quantity}]`,
+          },
+        })
+      }
+    })
+
+    return true
+  }
+
+  /**
+   * 财务确认采购订单
+   * @param dto 确认参数
+   */
+  async confirmPurchaseOrderByFinance(dto: PurchaseOrderConfirmDto) {
+    const user = this.cls.get<ReqUser>('user')
+    const ability = defineAbilityFor(user)
+
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: { AND: [{ id: dto.id }, accessibleBy(ability).PurchaseOrder] },
+    })
+    if (!order) {
+      throw new NotFoundException('采购订单不存在或无权操作')
+    }
+    if (!order.departmentConfirmStatus) {
+      throw new BadRequestException('请先完成部门确认')
+    }
+
+    await this.prisma.purchaseOrder.update({ where: { id: order.id }, data: { financeConfirmStatus: true } })
+    return true
+  }
+
+  /**
+   * 导出云仓库存
+   * @param query 查询参数
+   * @returns Excel
+   */
+  async exportYunCangStock(query: YunCangStockQueryDto): Promise<ExcelResult> {
+    const { rows } = await this.listYunCangStock({ ...query, current: 1, pageSize: Number.MAX_SAFE_INTEGER })
+    const exportRows = (rows as any[]).map((row) => [row.departmentName || '', row.shopName || '', row.sku || '', row.responsiblePerson || '', row.shelfNumber || '', row.imageUrl || '', row.inboundBarcode || '', row.spec || '', row.actualQuantity || 0, row.dailySalesQuantity || 0, row.monthlySalesQuantity || 0, row.reorderThreshold || 0, row.sluggishDays || 0])
+
+    return new ExcelResult({
+      filename: `云仓库存信息_${new Date().toISOString().split('T')[0]}.xlsx`,
+      headers: ['部门', '店铺名称', 'SKU', '负责人', '货号', '产品图片', '入仓条码', '产品规格', '库存数量', '日销量', '月销量', '补货预警阈值', '滞销天数'],
+      rows: exportRows,
+    })
+  }
+
+  /**
+   * 导出采购订单
+   * @param query 查询参数
+   * @returns Excel
+   */
+  async exportPurchaseOrder(query: PurchaseOrderQueryDto): Promise<ExcelResult> {
+    const { rows } = await this.listPurchaseOrder({ ...query, current: 1, pageSize: Number.MAX_SAFE_INTEGER })
+
+    const exportRows: any[][] = []
+    for (const order of rows as PurchaseOrderEntity[]) {
+      for (const detail of order.purchaseDetails) {
+        exportRows.push([order.purchaseBatchNumber, order.departmentConfirmStatus ? '是' : '否', order.financeConfirmStatus ? '是' : '否', detail.sku, detail.name || '', detail.quantity, detail.purchaseAmount, detail.purchaseOrderNumber || '', detail.expressNo || '', order.createdAt])
+      }
+    }
+
+    return new ExcelResult({
+      filename: `采购订单_${new Date().toISOString().split('T')[0]}.xlsx`,
+      headers: ['采购批次号', '部门确认', '财务确认', 'SKU', '商品名称', '采购数量', '采购金额', '采购订单号', '快递单号', '创建时间'],
+      rows: exportRows,
+    })
+  }
+
+  private mapPurchaseOrder(record: any): PurchaseOrderEntity {
+    return {
+      id: record.id,
+      purchaseBatchNumber: record.purchaseBatchNumber,
+      departmentConfirmStatus: record.departmentConfirmStatus,
+      financeConfirmStatus: record.financeConfirmStatus,
+      createdAt: record.createdAt,
+      updatedAt: record.updatedAt,
+      purchaseDetails:
+        record.purchaseDetails?.map(
+          (d: any): PurchaseDetailEntity => ({
+            id: d.id,
+            goodId: d.goodId,
+            sku: d.good?.sku ?? '',
+            name: null,
+            quantity: d.quantity,
+            purchaseAmount: Number(d.purchaseAmount),
+            purchaseOrderNumber: d.purchaseOrderNumber ?? null,
+            expressNo: d.expressNo ?? null,
+          }),
+        ) ?? [],
     }
   }
 

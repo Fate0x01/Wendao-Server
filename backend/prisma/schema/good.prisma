@@ -49,8 +49,11 @@ model Goods {
     changeLogs              GoodChangeLog[]
     /// 京仓库存信息
     jingCangStockInfos      JingCangStockInfo[]
+    /// 云仓库存信息
+    yunCangStockInfos       YunCangStockInfo[]
     createdAt               DateTime            @default(now())
     updatedAt               DateTime            @updatedAt()
+    purchaseDetails         PurchaseDetail[]
 
     @@map("system_goods")
 }
@@ -125,4 +128,82 @@ model JingCangStockInfo {
 
     @@unique([goodId, warehouse])
     @@map("system_jing_cang_stock_info")
+}
+
+/// 云仓库存信息模型
+model YunCangStockInfo {
+    id                     String                @id @default(cuid())
+    /// 关联商品ID
+    goodId                 String                @unique()
+    /// 关联商品
+    good                   Goods                 @relation(fields: [goodId], references: [id], onDelete: Cascade)
+    /// 关联库存池
+    yunCangInventoryPool   YunCangInventoryPool? @relation(fields: [yunCangInventoryPoolId], references: [id])
+    /// 关联库存池ID
+    yunCangInventoryPoolId String?
+    /// 日销量
+    dailySalesQuantity     Int
+    /// 月销量
+    monthlySalesQuantity   Int
+    /// 补货预警阈值
+    reorderThreshold       Int                   @default(10)
+    /// 滞销天数
+    sluggishDays           Int                   @default(0)
+    /// 创建时间
+    createdAt              DateTime              @default(now())
+    /// 更新时间
+    updatedAt              DateTime              @updatedAt()
+
+    @@map("system_yun_cang_stock_info")
+}
+
+///  云仓物理库存池
+model YunCangInventoryPool {
+    id         String             @id @default(cuid())
+    /// 真实的物理库存数量
+    quantity   Int                @default(0)
+    /// 反向关系：查看这个库存池被哪些商品(StockInfo)引用了
+    stockInfos YunCangStockInfo[]
+    createdAt  DateTime           @default(now())
+    updatedAt  DateTime           @updatedAt()
+
+    @@map("system_yun_cang_stock_inventory_pool")
+}
+
+/// 采购订单模型
+model PurchaseOrder {
+    id                      String           @id @default(cuid())
+    /// 采购批次号
+    purchaseBatchNumber     String           @unique
+    /// 部门确认状态（部门确认后，采购详情无法进行二次编辑）
+    departmentConfirmStatus Boolean          @default(false)
+    /// 财务确认状态（仅状态标记作用，不影响任何业务逻辑）
+    financeConfirmStatus    Boolean          @default(false)
+    /// 采购详情
+    purchaseDetails         PurchaseDetail[]
+    createdAt               DateTime         @default(now())
+    updatedAt               DateTime         @updatedAt()
+
+    @@map("system_purchase_order")
+}
+
+/// 采购详情模型
+model PurchaseDetail {
+    id                  String        @id @default(cuid())
+    /// 关联采购订单
+    purchaseOrderId     String
+    purchaseOrder       PurchaseOrder @relation(fields: [purchaseOrderId], references: [id], onDelete: Cascade)
+    /// 关联商品
+    goodId              String
+    good                Goods         @relation(fields: [goodId], references: [id], onDelete: Cascade)
+    /// 采购数量
+    quantity            Int
+    /// 采购金额
+    purchaseAmount      Decimal       @default(0) @db.Decimal(10, 2)
+    /// 采购订单号
+    purchaseOrderNumber String?
+    /// 快递单号
+    expressNo           String?
+
+    @@map("system_purchase_detail")
 }

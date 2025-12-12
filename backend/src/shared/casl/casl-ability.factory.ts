@@ -37,6 +37,13 @@ export default function defineAbilityFor(user: ReqUser) {
       case 'JingCangStockInfo':
         handleJingCangStockAbility(abilityBuilder, user)
         break
+      case 'YunCangStockInfo':
+        handleYunCangStockAbility(abilityBuilder, user)
+        break
+      case 'PurchaseOrder':
+      case 'PurchaseDetail':
+        handlePurchaseOrderAbility(abilityBuilder, user)
+        break
       default:
         break
     }
@@ -250,5 +257,85 @@ function handleJingCangStockAbility(builder: AbilityBuilder<AppAbility>, user: R
   // 部门成员
   if (memberDeptIds.length > 0) {
     builder.can(Actions.Manage, 'JingCangStockInfo', { good: { departmentId: { in: memberDeptIds } } })
+  }
+}
+
+/**
+ * 处理云仓库存信息权限
+ * 权限规则：
+ * - 一级部门负责人：可管理本部门及其下属二级部门的商品对应的云仓库存
+ * - 二级部门负责人：可管理本二级部门的商品对应的云仓库存
+ * - 部门成员：仅可管理本部门的商品对应的云仓库存
+ * @param builder
+ * @param user
+ */
+function handleYunCangStockAbility(builder: AbilityBuilder<AppAbility>, user: ReqUser) {
+  const leadingDepts = user.leadingDepartments ?? []
+  const memberDeptIds = user.departments?.map((d) => d.id) ?? []
+  const leadingLevel1DeptIds: string[] = []
+  const leadingLevel2DeptIds: string[] = []
+
+  for (const dept of leadingDepts) {
+    if (dept.parentId === null) {
+      leadingLevel1DeptIds.push(dept.id)
+    } else {
+      leadingLevel2DeptIds.push(dept.id)
+    }
+  }
+
+  // 一级部门负责人
+  if (leadingLevel1DeptIds.length > 0) {
+    // 管理本部门
+    builder.can(Actions.Manage, 'YunCangStockInfo', { good: { departmentId: { in: leadingLevel1DeptIds } } })
+    // 管理下属二级部门
+    builder.can(Actions.Manage, 'YunCangStockInfo', { good: { department: { parentId: { in: leadingLevel1DeptIds } } } })
+  }
+
+  // 二级部门负责人
+  if (leadingLevel2DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'YunCangStockInfo', { good: { departmentId: { in: leadingLevel2DeptIds } } })
+  }
+
+  // 部门成员
+  if (memberDeptIds.length > 0) {
+    builder.can(Actions.Manage, 'YunCangStockInfo', { good: { departmentId: { in: memberDeptIds } } })
+  }
+}
+
+/**
+ * 处理采购订单权限
+ * 权限规则：跟随商品管理权限，允许管理本部门及所辖部门商品相关的采购订单与详情
+ * @param builder
+ * @param user
+ */
+function handlePurchaseOrderAbility(builder: AbilityBuilder<AppAbility>, user: ReqUser) {
+  const leadingDepts = user.leadingDepartments ?? []
+  const memberDeptIds = user.departments?.map((d) => d.id) ?? []
+  const leadingLevel1DeptIds: string[] = []
+  const leadingLevel2DeptIds: string[] = []
+
+  for (const dept of leadingDepts) {
+    if (dept.parentId === null) {
+      leadingLevel1DeptIds.push(dept.id)
+    } else {
+      leadingLevel2DeptIds.push(dept.id)
+    }
+  }
+
+  if (leadingLevel1DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'PurchaseOrder', { purchaseDetails: { some: { good: { departmentId: { in: leadingLevel1DeptIds } } } } })
+    builder.can(Actions.Manage, 'PurchaseOrder', { purchaseDetails: { some: { good: { department: { parentId: { in: leadingLevel1DeptIds } } } } } })
+    builder.can(Actions.Manage, 'PurchaseDetail', { good: { departmentId: { in: leadingLevel1DeptIds } } })
+    builder.can(Actions.Manage, 'PurchaseDetail', { good: { department: { parentId: { in: leadingLevel1DeptIds } } } })
+  }
+
+  if (leadingLevel2DeptIds.length > 0) {
+    builder.can(Actions.Manage, 'PurchaseOrder', { purchaseDetails: { some: { good: { departmentId: { in: leadingLevel2DeptIds } } } } })
+    builder.can(Actions.Manage, 'PurchaseDetail', { good: { departmentId: { in: leadingLevel2DeptIds } } })
+  }
+
+  if (memberDeptIds.length > 0) {
+    builder.can(Actions.Manage, 'PurchaseOrder', { purchaseDetails: { some: { good: { departmentId: { in: memberDeptIds } } } } })
+    builder.can(Actions.Manage, 'PurchaseDetail', { good: { departmentId: { in: memberDeptIds } } })
   }
 }

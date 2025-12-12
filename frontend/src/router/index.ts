@@ -120,10 +120,25 @@ const routes: IRouter[] = [
       },
       {
         path: 'yuncang',
-        Component: lazy(() => import('pages/Business/StockManager/YunCang')),
         meta: {
           title: '云仓库存',
         },
+        children: [
+          {
+            path: 'index',
+            Component: lazy(() => import('pages/Business/StockManager/YunCang')),
+            meta: {
+              title: '库存信息',
+            },
+          },
+          {
+            path: 'purchase-order',
+            Component: lazy(() => import('pages/Business/PurchaseOrder')),
+            meta: {
+              title: '采购订单',
+            },
+          },
+        ],
       },
     ],
   },
